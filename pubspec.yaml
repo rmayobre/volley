@@ -1,0 +1,28 @@
+name: volley
+description: A concurrency framework built to work with the Isolate/Actor designed within the Dart language.
+version: 0.0.1
+repository: https://github.com/rmayobre/volley
+
+environment:
+  sdk: ^3.7.0
+
+dependencies:
+  meta: ^1.15.0
+
+dev_dependencies:
+  lints: ^5.0.0
+  test: ^1.24.0
+
+platforms:
+  android:
+  ios:
+  linux:
+  macos:
+#  web:
+  windows:
+
+topics:
+  - async
+  - concurrency
+  - coroutine
+  - actor
