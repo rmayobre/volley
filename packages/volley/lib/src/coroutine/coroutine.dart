@@ -23,7 +23,9 @@ Coroutine<R> coroutine<R>(Computation<R> compute) {
 
   // Cancel the subscription once the result settles (normal completion or
   // CoroutineDisposedException), so we don't leave a dangling listener.
-  impl.result.whenComplete(() => subscription?.cancel());
+  // `whenComplete` returns a new future that re-emits the error, so mark it
+  // as handled; callers observe the error through `impl.result` itself.
+  impl.result.whenComplete(() => subscription?.cancel()).ignore();
 
   channel.send(job);
   return impl;
