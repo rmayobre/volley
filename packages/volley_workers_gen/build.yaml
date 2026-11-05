@@ -1,0 +1,7 @@
+builders:
+  workers:
+    import: "package:volley_workers_gen/builder.dart"
+    builder_factories: ["workersBuilder"]
+    build_extensions: {".dart": [".gen.dart"]}
+    auto_apply: dependents
+    build_to: source
