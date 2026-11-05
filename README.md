@@ -72,3 +72,5 @@ Each package's `dart_test.yaml` runs tests on the VM and in Chrome. Tests in
 `vm/` needs `dart:isolate`/`dart:io`, and `web/` needs the browser
 implementations (selected with `@TestOn`). Use `dart test -p vm` where no
 browser is installed.
+
+See the [architecture overview](docs/architecture.md).

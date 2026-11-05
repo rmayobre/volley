@@ -70,6 +70,22 @@ final class WorkersGenerator extends Generator {
     try {
       for (final parameter in constructor.formalParameters) {
         final field = parameter.name!;
+        if (field.startsWith('_')) {
+          throw InvalidGenerationSourceError(
+            '@volleyMessage `$name`: constructor parameter `$field` is '
+            'private; use a public parameter name.',
+            element: element,
+          );
+        }
+        if (element.getField(field) == null &&
+            element.getGetter(field) == null) {
+          throw InvalidGenerationSourceError(
+            '@volleyMessage `$name`: constructor parameter `$field` has no '
+            'matching field or getter named `$field`, so its value cannot '
+            'be read when encoding the message.',
+            element: element,
+          );
+        }
         toMap.add("'$field': ${codec.encode(parameter.type, 'value.$field')}");
         final decoded = codec.decode(parameter.type, "map['$field']");
         args.add(parameter.isNamed ? '$field: $decoded' : decoded);

@@ -12,3 +12,5 @@ containing for each annotated function:
 
 Add `volley_workers_gen` and `build_runner` as dev dependencies and run
 `dart run build_runner build`.
+
+See the [architecture overview](../../docs/architecture.md).

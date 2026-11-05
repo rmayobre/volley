@@ -56,3 +56,5 @@ accept primitives, lists, maps, typed data, enums, `DateTime`, `Duration`,
 
 See `example/` and `test/` (browser tests need the worker scripts compiled first
 and must be run from this directory: `dart test -p chrome test/web`).
+
+See the [architecture overview](../../docs/architecture.md).
