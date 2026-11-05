@@ -3,13 +3,15 @@ import 'dart:collection';
 
 import '../disposable/disposable.dart';
 import 'pool.dart';
+import 'pool_disposed_exception.dart';
 
-final class BasePool<T> implements Pool<T>, Disposable {
+final class BasePool<T> implements Pool<T> {
   final Queue<T> _resources;
   final Queue<Completer<T>> _waiters;
   final int _size;
   final ResourceFactory<T> _factory;
   int _created = 0;
+  bool _disposed = false;
 
   BasePool(this._size, this._factory)
     : _resources = Queue(),
@@ -23,6 +25,7 @@ final class BasePool<T> implements Pool<T>, Disposable {
 
   @override
   Future<R> execute<R>(FutureOr<R> Function(T) compute) async {
+    if (_disposed) throw const PoolDisposedException();
     final resource = await _borrow();
     try {
       return await compute(resource);
@@ -45,8 +48,11 @@ final class BasePool<T> implements Pool<T>, Disposable {
       return Future.value(_resources.removeFirst());
     }
     if (_created < _size) {
+      // Only count the resource once it exists: a factory that throws must
+      // not use up a slot, or the pool would later wait forever for it.
+      final resource = _factory(_created);
       _created++;
-      return Future.value(_factory(_created - 1));
+      return Future.value(resource);
     }
     final completer = Completer<T>();
     _waiters.add(completer);
@@ -54,6 +60,11 @@ final class BasePool<T> implements Pool<T>, Disposable {
   }
 
   void _release(T resource) {
+    if (_disposed) {
+      // The pool closed while this resource was out: retire it now.
+      unawaited(_disposeResource(resource));
+      return;
+    }
     if (_waiters.isNotEmpty) {
       _waiters.removeFirst().complete(resource);
     } else if (_resources.length < _size) {
@@ -63,6 +74,22 @@ final class BasePool<T> implements Pool<T>, Disposable {
     }
   }
 
+  Future<void> _disposeResource(T resource) async {
+    if (resource is Disposable) await resource.dispose();
+  }
+
   @override
-  Future<void> dispose() async {}
+  Future<void> dispose() async {
+    if (_disposed) return;
+    _disposed = true;
+
+    for (final waiter in _waiters) {
+      waiter.completeError(const PoolDisposedException());
+    }
+    _waiters.clear();
+
+    final idle = _resources.toList();
+    _resources.clear();
+    await Future.wait(idle.map(_disposeResource));
+  }
 }

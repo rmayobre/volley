@@ -22,3 +22,4 @@ export 'src/message/message.dart';
 export 'src/message/unsendable_message_exception.dart';
 export 'src/pool/base_pool.dart';
 export 'src/pool/pool.dart';
+export 'src/pool/pool_disposed_exception.dart';

@@ -25,7 +25,7 @@ with these types indirectly, through `volley`'s exports.
   `Disposable.iterables(...)` to bundle several into one.
 - **`MessageBus`** / **`BaseMessageBus`** — pub/sub fan-out over a stream of
   `Message`s, for wiring multiple listeners to one channel.
-- **`Pool<T>`** / **`BasePool<T>`** — a reusable-object pool abstraction.
+- **`Pool<T>`** / **`BasePool<T>`** — a fixed-size, lazily filled pool of reusable objects. `dispose()` fails waiting callers (and later calls) with `PoolDisposedException` and disposes `Disposable` resources, idle ones now and in-use ones when handed back.
 
 ## Making a `Message` safe to send across a worker/isolate boundary
 

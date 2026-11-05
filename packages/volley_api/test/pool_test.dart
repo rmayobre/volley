@@ -89,4 +89,118 @@ void main() {
       expect(await pool.execute((r) => r), 0);
     });
   });
+
+  group('Pool factory failure', () {
+    test('a failing factory does not use up a slot', () async {
+      var attempts = 0;
+      final pool = Pool<int>(1, (i) {
+        if (attempts++ == 0) throw StateError('first attempt fails');
+        return i;
+      });
+
+      await expectLater(pool.execute((r) => r), throwsStateError);
+      // Previously the failed attempt counted as created, so this waited
+      // forever for a resource that did not exist.
+      expect(
+        await Future.value(
+          pool.execute((r) => r),
+        ).timeout(const Duration(seconds: 2)),
+        0,
+      );
+    });
+  });
+
+  group('Pool dispose', () {
+    test('execute after dispose throws PoolDisposedException', () async {
+      final pool = Pool<int>(1, (i) => i);
+      await pool.dispose();
+      await expectLater(
+        pool.execute((r) => r),
+        throwsA(isA<PoolDisposedException>()),
+      );
+    });
+
+    test(
+      'callers waiting for a resource fail with PoolDisposedException',
+      () async {
+        final pool = Pool<int>(1, (i) => i);
+        final gate = Completer<void>();
+        final running = pool.execute<void>((_) => gate.future);
+        final waiting = pool.execute((r) => r);
+        final failure = expectLater(
+          waiting,
+          throwsA(isA<PoolDisposedException>()),
+        );
+
+        await Future.delayed(Duration.zero);
+        await pool.dispose();
+        await failure;
+
+        gate.complete();
+        await running; // the call that was already running still finishes
+      },
+    );
+
+    test('disposes idle Disposable resources', () async {
+      final made = <_Res>[];
+      final pool = Pool<_Res>(2, (i) {
+        final r = _Res(i);
+        made.add(r);
+        return r;
+      });
+      await Future.wait([
+        Future.value(
+          pool.execute<void>((_) => Future.delayed(Duration(milliseconds: 5))),
+        ),
+        Future.value(
+          pool.execute<void>((_) => Future.delayed(Duration(milliseconds: 5))),
+        ),
+      ]);
+      expect(made, hasLength(2));
+      expect(made.every((r) => !r.disposed), isTrue);
+
+      await pool.dispose();
+      expect(made.every((r) => r.disposed), isTrue);
+      expect(pool.available, 0);
+    });
+
+    test('a resource in use is disposed when it is handed back', () async {
+      late _Res used;
+      final pool = Pool<_Res>(1, (i) => _Res(i));
+      final gate = Completer<void>();
+      final running = pool.execute<void>((r) {
+        used = r;
+        return gate.future;
+      });
+      await Future.delayed(Duration.zero);
+
+      await pool.dispose();
+      expect(used.disposed, isFalse, reason: 'still in use');
+
+      gate.complete();
+      await running;
+      await Future.delayed(Duration.zero);
+      expect(used.disposed, isTrue);
+      expect(pool.available, 0, reason: 'must not return to a closed pool');
+    });
+
+    test(
+      'dispose is idempotent and ignores non-Disposable resources',
+      () async {
+        final pool = Pool<int>(2, (i) => i);
+        await pool.execute((r) => r);
+        await pool.dispose();
+        await pool.dispose();
+      },
+    );
+  });
+}
+
+final class _Res implements Disposable {
+  final int index;
+  bool disposed = false;
+  _Res(this.index);
+
+  @override
+  void dispose() => disposed = true;
 }
