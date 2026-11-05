@@ -1,0 +1,11 @@
+# Run every test on the platforms it supports. Files declare their own
+# platforms with @TestOn; folders group them:
+#
+#   test/common/  runs on every platform (VM and browser)
+#   test/vm/      needs dart:isolate / dart:io (VM only)
+#   test/web/     needs the browser implementations
+#
+# Use `dart test -p vm` where no browser is installed.
+platforms:
+  - vm
+  - chrome
