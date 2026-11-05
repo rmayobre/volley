@@ -31,7 +31,7 @@ final class CounterState implements Message {
 
 // --- Singleton ---
 
-final class Counter extends Singleton<CounterState, CounterEvent> {
+final class Counter extends SerializedSingleton<CounterState, CounterEvent> {
   int _count = 0;
 
   @override

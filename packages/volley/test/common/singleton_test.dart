@@ -19,7 +19,7 @@ final class Total implements Message {
   const Total(this.value);
 }
 
-final class Counter extends Singleton<Total, CounterEvent> {
+final class Counter extends SerializedSingleton<Total, CounterEvent> {
   int _total = 0;
 
   @override
@@ -34,7 +34,7 @@ final class Counter extends Singleton<Total, CounterEvent> {
   }
 }
 
-final class Echo extends Singleton<Total, Total> {
+final class Echo extends SerializedSingleton<Total, Total> {
   @override
   Total reduce(Total event) => event;
 }

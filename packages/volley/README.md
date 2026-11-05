@@ -67,7 +67,7 @@ Fire several off concurrently with `Future.wait` before awaiting any one of
 them — see
 [`example/concurrent_coroutines.dart`](example/concurrent_coroutines.dart).
 
-### `Singleton<I, O>`
+### `SerializedSingleton<I, O>` / `ConcurrentSingleton<I, O>`
 
 A stateful reducer (`FutureOr<I> reduce(O event)`: `I` is what callers
 receive, `O` is what they send) with exactly one live instance per subtype, shared across
@@ -81,7 +81,7 @@ final class CounterState implements Message {
   const CounterState(this.count);
 }
 
-final class Counter extends Singleton<CounterState, CounterEvent> {
+final class Counter extends SerializedSingleton<CounterState, CounterEvent> {
   int _count = 0;
 
   @override
@@ -100,6 +100,20 @@ channel.send(const Increment());
 If a singleton's `reduce` throws, the error is delivered as an error event on
 the channel's `messages` stream, and the singleton (and everything else)
 keeps running. If it fails to build, `Singleton.instance` throws.
+
+Pick the flavour that matches how `reduce` uses `await`:
+
+| | `SerializedSingleton` | `ConcurrentSingleton` |
+|---|---|---|
+| Messages | one at a time, in send order | each starts immediately and may overlap |
+| Replies | in send order | in completion order |
+| `reduce` must be re-entrancy safe | no | yes (don't check, `await`, then act on the stale check) |
+| Called back from inside its own `reduce` | **deadlocks** | fine |
+| Use for | stateful logic that awaits | stateless or re-entrancy-safe work |
+
+A `reduce` with no `await` can't overlap with itself, so both behave the
+same for it. Different singletons never wait for each other. (`Singleton`
+itself is sealed: extend one of the two flavours.)
 
 Every subsequent call to `Singleton.instance<...>()` with the same type
 returns the *same* cached channel and ignores the `build` factory — the

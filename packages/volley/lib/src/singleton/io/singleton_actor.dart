@@ -10,6 +10,31 @@ import 'singleton_results.dart';
 
 final _singletons = <Type, Singleton<dynamic, dynamic>>{};
 
+/// The tail of each [SerializedSingleton]'s queue of pending messages.
+final _queues = <Type, Future<void>>{};
+
+/// Runs [task] after every earlier task for [type] has finished.
+///
+/// [task] must not throw (the host catches reduce errors itself), so the
+/// queue can never get stuck on a failure.
+Future<T> _enqueue<T>(Type type, Future<T> Function() task) {
+  final previous = _queues[type] ?? Future<void>.value();
+  final result = previous.then((_) => task());
+  _queues[type] = result.then<void>((_) {}, onError: (_) {});
+  return result;
+}
+
+Future<SingletonResult> _reduce(
+  Singleton<dynamic, dynamic> singleton,
+  Object? message,
+) async {
+  try {
+    return SingletonResponse((await singleton.reduce(message)) as Message);
+  } catch (e, st) {
+    return SingletonFailure(e, st.toString());
+  }
+}
+
 /// Runs inside the shared singleton actor's isolate.
 ///
 /// Nothing a [Singleton] does may escape this reducer: an uncaught error
@@ -30,21 +55,20 @@ Future<Actor<SingletonResult, SingletonOperation>> spawnSingletonActor() {
         }
         return _reply(message.replyTo, result);
       case SingletonMessage():
-        SingletonResult result;
         final singleton = _singletons[message.singletonType];
+        final SingletonResult result;
         if (singleton == null) {
           result = SingletonFailure(
             StateError('Singleton ${message.singletonType} is not registered'),
             StackTrace.current.toString(),
           );
+        } else if (singleton is SerializedSingleton) {
+          result = await _enqueue(
+            message.singletonType,
+            () => _reduce(singleton, message.message),
+          );
         } else {
-          try {
-            result = SingletonResponse(
-              (await singleton.reduce(message.message)) as Message,
-            );
-          } catch (e, st) {
-            result = SingletonFailure(e, st.toString());
-          }
+          result = await _reduce(singleton, message.message);
         }
         return _reply(message.replyTo, result);
     }

@@ -13,7 +13,7 @@ final class Out implements Message {
   const Out(this.n);
 }
 
-final class Flaky extends Singleton<Out, Cmd> {
+final class Flaky extends SerializedSingleton<Out, Cmd> {
   int _n = 0;
 
   @override
@@ -23,12 +23,12 @@ final class Flaky extends Singleton<Out, Cmd> {
   }
 }
 
-final class Other extends Singleton<Out, Cmd> {
+final class Other extends SerializedSingleton<Out, Cmd> {
   @override
   Out reduce(Cmd event) => const Out(-1);
 }
 
-final class BrokenBuild extends Singleton<Out, Cmd> {
+final class BrokenBuild extends SerializedSingleton<Out, Cmd> {
   BrokenBuild() {
     throw StateError('build failed');
   }

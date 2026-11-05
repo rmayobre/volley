@@ -88,7 +88,7 @@ void main() {
   });
 }
 
-final class _Doubler extends Singleton<Num, Num> {
+final class _Doubler extends SerializedSingleton<Num, Num> {
   @override
   Num reduce(Num event) => Num(event.value * 2);
 }

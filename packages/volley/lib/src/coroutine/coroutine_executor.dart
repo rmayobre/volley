@@ -7,8 +7,10 @@ import '../singleton/io/singleton_send_port.dart';
 import 'coroutine_message.dart';
 import 'coroutine_result.dart';
 
+// Concurrent on purpose: a running job may start nested coroutines, which
+// come back to this same singleton and must not wait for the outer job.
 final class CoroutineExecutor
-    implements Singleton<CoroutineResult, CoroutineMessage> {
+    extends ConcurrentSingleton<CoroutineResult, CoroutineMessage> {
   final _activeJobs = <String, (Isolate, ReceivePort)>{};
   final _pendingCancels = <String>{};
 

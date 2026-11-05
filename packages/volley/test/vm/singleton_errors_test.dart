@@ -15,7 +15,7 @@ final class Leaky implements Message {
   Leaky(this.port);
 }
 
-final class LeakyOut extends Singleton<Leaky, Cmd> {
+final class LeakyOut extends SerializedSingleton<Leaky, Cmd> {
   @override
   Leaky reduce(Cmd event) => Leaky(ReceivePort());
 }

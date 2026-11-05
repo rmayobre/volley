@@ -36,14 +36,23 @@ final class _WebSingletonChannel<I extends Message, O extends Message>
   @override
   Stream<I> get messages => _controller.stream;
 
+  /// The tail of the queue of pending messages (serialized singletons only).
+  Future<void> _queue = Future<void>.value();
+
+  Future<void> _handle(O message) async {
+    try {
+      _controller.add(await _singleton.reduce(message));
+    } catch (e, st) {
+      _controller.addError(e, st);
+    }
+  }
+
   @override
   void send(O message) {
-    scheduleMicrotask(() async {
-      try {
-        _controller.add(await _singleton.reduce(message));
-      } catch (e, st) {
-        _controller.addError(e, st);
-      }
-    });
+    if (_singleton is SerializedSingleton) {
+      _queue = _queue.then((_) => _handle(message));
+    } else {
+      scheduleMicrotask(() => _handle(message));
+    }
   }
 }
