@@ -12,6 +12,17 @@ import '../singleton.dart';
 final _instances = <Type, Singleton<dynamic, dynamic>>{};
 final _channels = <Type, Channel<dynamic, dynamic>>{};
 
+/// Disposes every [Disposable] singleton and forgets all instances, so the
+/// next `Singleton.instance` builds them from scratch.
+Future<void> disposeSingletons() async {
+  final instances = _instances.values.toList();
+  _instances.clear();
+  _channels.clear();
+  for (final instance in instances) {
+    if (instance case final Disposable d) await d.dispose();
+  }
+}
+
 Future<Channel<I, O>> singletonInstance<
   I extends Message,
   O extends Message,

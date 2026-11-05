@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:volley_api/volley_api.dart' show Disposable;
+
 import '../init/io/bootstrapper.dart';
 import '../singleton/singleton.dart';
 import '../singleton/io/singleton_send_port.dart';
@@ -10,9 +12,22 @@ import 'coroutine_result.dart';
 // Concurrent on purpose: a running job may start nested coroutines, which
 // come back to this same singleton and must not wait for the outer job.
 final class CoroutineExecutor
-    extends ConcurrentSingleton<CoroutineResult, CoroutineMessage> {
+    extends ConcurrentSingleton<CoroutineResult, CoroutineMessage>
+    implements Disposable {
   final _activeJobs = <String, (Isolate, ReceivePort)>{};
   final _pendingCancels = <String>{};
+
+  /// Kills every running job (used by `Bootstrapper.shutdown()`).
+  @override
+  void dispose() {
+    for (final (isolate, port) in _activeJobs.values) {
+      isolate.kill(priority: Isolate.immediate);
+      // Unblocks each job's pending `resultPort.first`, as for a disposal.
+      port.close();
+    }
+    _activeJobs.clear();
+    _pendingCancels.clear();
+  }
 
   @override
   Future<CoroutineResult<dynamic>> reduce(CoroutineMessage message) async {

@@ -11,6 +11,9 @@ final class SingletonConstructed
     with DistinctMessage
     implements SingletonResult {}
 
+@internal
+final class SingletonStopped with DistinctMessage implements SingletonResult {}
+
 /// A [Singleton] failed to build or to handle a message.
 ///
 /// Reported to the caller instead of being thrown, so that one failing

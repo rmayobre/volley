@@ -2,11 +2,13 @@ import 'dart:async';
 
 import 'package:volley_api/volley_api.dart';
 
+import '../../coroutine/coroutine_impl.dart';
 import '../../coroutine/coroutine_message.dart';
 import '../../coroutine/coroutine_result.dart';
+import '../../singleton/web/singleton_instance.dart';
 
 final class Bootstrapper {
-  static late final Channel<CoroutineResult, CoroutineMessage> coroutineChannel;
+  static late Channel<CoroutineResult, CoroutineMessage> coroutineChannel;
 
   static Future<void>? _initialization;
 
@@ -15,6 +17,15 @@ final class Bootstrapper {
 
   static Future<void> _initialize() async {
     coroutineChannel = _WebCoroutineChannel();
+  }
+
+  /// Disposes unfinished coroutines and resets so [initialize] can run again.
+  /// (There is no background host on the web, so nothing else needs stopping.)
+  static Future<void> shutdown() async {
+    if (_initialization == null) return;
+    CoroutineImpl.disposeAll();
+    await disposeSingletons();
+    _initialization = null;
   }
 }
 

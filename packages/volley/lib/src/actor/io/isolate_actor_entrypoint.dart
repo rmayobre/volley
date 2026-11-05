@@ -17,14 +17,26 @@ void entrypoint(IsolateEntrypointArgs args) async {
   //
   // listen() (not asyncMap) is intentional: asyncMap pauses the subscription
   // while its future is pending, which would deadlock nested coroutine calls
-  // that queue a new message while an outer job is still executing.
-  inputPort.listen((message) async {
+  // that queue a new message while an outer job is still executing. Ordering
+  // for ordinary actors is therefore done with an explicit queue instead.
+  Future<void> handle(dynamic message) async {
     final response = await args.reduce(message);
     if (response == null) return;
     try {
       args.sendPort.send(response);
     } on ArgumentError catch (e) {
       throw UnsendableMessageException(response.runtimeType, e);
+    }
+  }
+
+  var queue = Future<void>.value();
+  inputPort.listen((message) {
+    if (args.serialized) {
+      // One message at a time, in order. An uncaught error ends the queue and
+      // the isolate, exactly as it would without queuing.
+      queue = queue.then((_) => handle(message));
+    } else {
+      handle(message);
     }
   });
 
@@ -43,11 +55,18 @@ final class IsolateEntrypointArgs<I extends Object, O extends Object> {
   final SendPort handshakeSendPort;
   final SendPort? singletonSendPort;
 
+  /// Whether messages are handled one at a time, in order. Only the shared
+  /// singleton host turns this off: it must start work for every message
+  /// immediately so that concurrent singletons (and nested coroutines, which
+  /// call back into the coroutine executor) don't wait on each other.
+  final bool serialized;
+
   const IsolateEntrypointArgs({
     required this.reducer,
     required this.sendPort,
     required this.handshakeSendPort,
     this.singletonSendPort,
+    this.serialized = true,
   });
 
   FutureOr<Object>? reduce(dynamic message) {

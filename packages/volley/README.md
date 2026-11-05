@@ -9,10 +9,11 @@ Re-exports everything from [`volley_api`](../volley_api), so importing
 `package:volley/volley.dart` is enough for both the interfaces and the
 implementation.
 
-## Setup
+## Setup and shutdown
 
-Call `Bootstrapper.initialize()` once, before using `actor()`, `coroutine()`,
-or `Singleton.instance()`:
+Call `Bootstrapper.initialize()` once, before using `coroutine()` or
+`Singleton.instance()` (`actor()` calls it for you). It is safe to call more
+than once.
 
 ```dart
 import 'package:volley/volley.dart';
@@ -20,8 +21,18 @@ import 'package:volley/volley.dart';
 void main() async {
   await Bootstrapper.initialize();
   // ... actor()/coroutine()/Singleton.instance() are safe to use from here.
+
+  await Bootstrapper.shutdown(); // lets the program exit on its own
 }
 ```
+
+On native platforms the shared singleton host runs in its own isolate, which
+keeps the process alive after `main` returns. `Bootstrapper.shutdown()` stops
+it: it fails unfinished coroutines with a `CoroutineDisposedException`, calls
+`dispose()` on every singleton that implements `Disposable`, and stops the
+host. Dispose your actors yourself first. After `shutdown()` you may call
+`initialize()` again; singletons then start from scratch. Only the isolate that
+called `initialize()` first (normally the main one) can shut down.
 
 ## The three primitives
 
@@ -31,7 +42,9 @@ A dedicated isolate running one `FutureOr<I> Function(O)` reducer for its
 whole lifetime, talking back over `Actor.channel`. Type parameters follow
 `Channel`'s convention from the caller's side: `I` is what you *receive*
 (the reducer's output) and `O` is what you *send* (the reducer's input).
-If the reducer throws, the actor closes itself and `Actor.closed` completes
+Messages are handled one at a time, in order, on both VM and web, so
+responses arrive in the order the messages were sent even for asynchronous
+reducers. If the reducer throws, the actor closes itself and `Actor.closed` completes
 with the error (`null` after a normal `dispose()`).
 
 ```dart

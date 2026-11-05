@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:volley/volley.dart';
 
@@ -114,5 +113,5 @@ void main() async {
   print('Shared state verified: counter is consistent across isolates.');
 
   workerActor.dispose();
-  exit(0);
+  await Bootstrapper.shutdown(); // lets the program exit on its own
 }

@@ -69,22 +69,6 @@ void main() {
       expect((await reply).value, 11);
       expect(calls, 1);
     });
-
-    test('handles messages one at a time, in order', () async {
-      // The first message is the slowest; a concurrent implementation would
-      // answer it last.
-      final a = await actor<Num, Num>((m) async {
-        await Future.delayed(Duration(milliseconds: 30 - m.value * 10));
-        return m;
-      });
-      addTearDown(a.dispose);
-
-      final replies = a.channel.messages.take(3).map((m) => m.value).toList();
-      for (var i = 0; i < 3; i++) {
-        a.channel.send(Num(i));
-      }
-      expect(await replies, [0, 1, 2]);
-    });
   });
 }
 

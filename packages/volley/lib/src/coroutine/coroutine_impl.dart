@@ -12,7 +12,23 @@ final class CoroutineImpl<R> implements Coroutine<R> {
   bool _isCanceled = false;
   bool _isDone = false;
 
-  CoroutineImpl(this._channel, this._jobId);
+  /// Coroutines started in this isolate that haven't settled yet.
+  static final _live = <CoroutineImpl<dynamic>>{};
+
+  /// Disposes every unfinished coroutine (used by `Bootstrapper.shutdown()`).
+  static void disposeAll() {
+    for (final c in _live.toList()) {
+      c.dispose();
+    }
+  }
+
+  CoroutineImpl(this._channel, this._jobId) {
+    _live.add(this);
+    _completer.future.then<void>(
+      (_) => _live.remove(this),
+      onError: (_) => _live.remove(this),
+    );
+  }
 
   @override
   bool get isDone => _isDone;

@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:volley/volley.dart';
 
 // Simulate a CPU-bound task by summing a range of integers.
@@ -49,5 +47,5 @@ void main() async {
 
   assert(seqResults.join() == conResults.join(), 'Results must match');
 
-  exit(0);
+  await Bootstrapper.shutdown(); // lets the program exit on its own
 }

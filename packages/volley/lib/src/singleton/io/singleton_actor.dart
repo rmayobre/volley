@@ -3,7 +3,7 @@ import 'dart:isolate';
 import 'package:meta/meta.dart';
 import 'package:volley_api/volley_api.dart';
 
-import '../../actor/actor.dart';
+import '../../actor/io/actor.dart' show spawnActor;
 import '../singleton.dart';
 import 'singleton_operation.dart';
 import 'singleton_results.dart';
@@ -43,7 +43,7 @@ Future<SingletonResult> _reduce(
 /// [SingletonFailure].
 @internal
 Future<Actor<SingletonResult, SingletonOperation>> spawnSingletonActor() {
-  return actor<SingletonResult, SingletonOperation>((message) async {
+  return spawnActor<SingletonResult, SingletonOperation>((message) async {
     switch (message) {
       case SingletonInit<Singleton<Message, Message>>():
         SingletonResult result;
@@ -53,6 +53,19 @@ Future<Actor<SingletonResult, SingletonOperation>> spawnSingletonActor() {
         } catch (e, st) {
           result = SingletonFailure(e, st.toString());
         }
+        return _reply(message.replyTo, result);
+      case SingletonShutdown():
+        SingletonResult result = SingletonStopped();
+        try {
+          for (final singleton in _singletons.values) {
+            if (singleton case final Disposable d) await d.dispose();
+          }
+        } catch (e, st) {
+          // Still confirm, so shutdown never waits forever on a bad dispose.
+          result = SingletonFailure(e, st.toString());
+        }
+        _singletons.clear();
+        _queues.clear();
         return _reply(message.replyTo, result);
       case SingletonMessage():
         final singleton = _singletons[message.singletonType];
@@ -72,7 +85,7 @@ Future<Actor<SingletonResult, SingletonOperation>> spawnSingletonActor() {
         }
         return _reply(message.replyTo, result);
     }
-  });
+  }, serialized: false);
 }
 
 /// Sends [result] to [replyTo] and returns what was actually sent.

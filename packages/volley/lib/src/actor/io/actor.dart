@@ -7,6 +7,7 @@ import 'package:volley_api/volley_api.dart';
 
 import '../../channel/io/isolate_channel.dart';
 import '../../singleton/io/singleton_send_port.dart';
+import '../../init/io/bootstrapper.dart';
 import 'isolate_actor.dart';
 import 'isolate_actor_entrypoint.dart';
 
@@ -15,6 +16,10 @@ import 'isolate_actor_entrypoint.dart';
 /// [reducer] is called inside the isolate for every message of type [O] sent
 /// on [IsolateActor.channel]. The result of type [I] is received on the same
 /// channel's `messages` stream.
+///
+/// Messages are handled one at a time, in the order they were sent, and
+/// responses are emitted in that same order, even if [reducer] is
+/// asynchronous.
 ///
 /// If [reducer] (or anything else in the actor's isolate) throws an uncaught
 /// exception, the actor closes itself and [Actor.closed] completes with the
@@ -33,17 +38,23 @@ import 'isolate_actor_entrypoint.dart';
 /// ```
 Future<Actor<I, O>> actor<I extends Message, O extends Message>(
   FutureOr<I> Function(O) reducer,
-) => spawnActor<I, O>(reducer);
+) async {
+  // Actors need the shared singleton host (every actor isolate is wired to
+  // it). Without this, creating an actor first would hang forever.
+  await Bootstrapper.initialize();
+  return spawnActor<I, O>(reducer);
+}
 
 const Object _isolateDied = Object();
 
-/// Implementation of [actor]. [entry] replaces the isolate's entrypoint and
-/// exists so tests can simulate an isolate that fails while starting up.
-@visibleForTesting
+/// Implementation of [actor]. [entry] replaces the isolate's entrypoint (so
+/// tests can simulate an isolate that fails while starting up), and
+/// [serialized] is turned off only for the shared singleton host.
 @internal
 Future<Actor<I, O>> spawnActor<I extends Message, O extends Message>(
   FutureOr<I> Function(O) reducer, {
   void Function(IsolateEntrypointArgs<I, O>) entry = entrypoint,
+  bool serialized = true,
 }) async {
   final handshakePort = ReceivePort();
   final responsePort = ReceivePort();
@@ -52,6 +63,7 @@ Future<Actor<I, O>> spawnActor<I extends Message, O extends Message>(
     sendPort: responsePort.sendPort,
     handshakeSendPort: handshakePort.sendPort,
     singletonSendPort: singletonSendPort,
+    serialized: serialized,
   );
   final errorPort = ReceivePort();
   final exitPort = ReceivePort();

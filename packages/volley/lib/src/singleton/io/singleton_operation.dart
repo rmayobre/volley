@@ -19,6 +19,17 @@ final class SingletonInit<T extends Singleton<Message, Message>>
   SingletonInit(this.singletonType, this.build, {this.replyTo});
 }
 
+/// Asks the host to dispose every singleton that is [Disposable] and then
+/// confirm with [SingletonStopped]. Sent by `Bootstrapper.shutdown()`.
+@internal
+final class SingletonShutdown
+    with DistinctMessage
+    implements SingletonOperation {
+  final SendPort? replyTo;
+
+  SingletonShutdown({this.replyTo});
+}
+
 @internal
 final class SingletonMessage<O extends Message>
     with DistinctMessage

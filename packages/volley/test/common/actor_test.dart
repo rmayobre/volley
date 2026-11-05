@@ -26,6 +26,12 @@ Future<Num> _delayedIncrement(Num m) async {
   return Num(m.value + 1);
 }
 
+/// Earlier messages take longer, so a concurrent actor would answer them last.
+Future<Num> _slowerFirst(Num m) async {
+  await Future.delayed(Duration(milliseconds: 90 - m.value * 40));
+  return m;
+}
+
 Num _failOnNegative(Num m) {
   if (m.value < 0) throw ArgumentError('negative value: ${m.value}');
   return Num(m.value);
@@ -62,6 +68,17 @@ void main() {
         a.channel.send(Num(i));
       }
       expect(await results.timeout(wait), [2, 4, 6, 8, 10]);
+    });
+
+    test('handles messages one at a time, in order', () async {
+      final a = await actor<Num, Num>(_slowerFirst);
+      addTearDown(a.dispose);
+
+      final replies = a.channel.messages.take(3).map((m) => m.value).toList();
+      for (var i = 0; i < 3; i++) {
+        a.channel.send(Num(i));
+      }
+      expect(await replies.timeout(wait), [0, 1, 2]);
     });
 
     test('supports asynchronous reducers', () async {

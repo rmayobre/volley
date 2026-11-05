@@ -1,6 +1,4 @@
 import 'dart:async';
-import 'dart:io';
-
 import 'package:volley/volley.dart';
 
 // --- Messages ---
@@ -78,5 +76,5 @@ void main() async {
   same.send(const Increment(10)); // CounterState(count: 10)
 
   await completer.future;
-  exit(0);
+  await Bootstrapper.shutdown(); // lets the program exit on its own
 }

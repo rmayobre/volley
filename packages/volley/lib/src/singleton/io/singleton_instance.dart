@@ -10,6 +10,15 @@ import 'singleton_send_port.dart';
 
 final _channels = <Type, Channel<dynamic, dynamic>>{};
 
+/// Closes every cached singleton channel in this isolate, so their reply ports
+/// stop keeping the isolate alive, and forgets them.
+void closeSingletonChannels() {
+  for (final channel in _channels.values) {
+    (channel as _SingletonChannel).close();
+  }
+  _channels.clear();
+}
+
 Future<Channel<I, O>> singletonInstance<
   I extends Message,
   O extends Message,
@@ -57,6 +66,11 @@ final class _SingletonChannel<
           );
       }
     });
+  }
+
+  void close() {
+    _replyPort.close();
+    _controller.close();
   }
 
   @override

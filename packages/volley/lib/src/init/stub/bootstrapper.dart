@@ -12,4 +12,8 @@ final class Bootstrapper {
   static Future<void> initialize() async {
     throw UnimplementedError('Bootstrapper is not supported on this platform.');
   }
+
+  static Future<void> shutdown() async {
+    throw UnimplementedError('Bootstrapper is not supported on this platform.');
+  }
 }

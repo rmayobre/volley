@@ -1,5 +1,3 @@
-import 'dart:io';
-
 import 'package:volley/volley.dart';
 
 void main() async {
@@ -12,5 +10,5 @@ void main() async {
         ).result;
       }).result;
   print(messageFromNestedCoroutine);
-  exit(0);
+  await Bootstrapper.shutdown(); // lets the program exit on its own
 }
