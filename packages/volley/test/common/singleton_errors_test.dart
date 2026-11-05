@@ -101,6 +101,53 @@ void main() {
     });
   });
 
+  group('error delivery contract', () {
+    test(
+      'an error nobody handles is uncaught, like any stream error',
+      () async {
+        final uncaught = <Object>[];
+        await runZonedGuarded(() async {
+          final ch = await Singleton.instance<Out, Cmd, Flaky>(Flaky.new);
+          ch.messages.listen((_) {}); // no onError
+          ch.send(const Cmd(fail: true));
+          await Future.delayed(const Duration(milliseconds: 300));
+        }, (error, stack) => uncaught.add(error));
+
+        expect(uncaught, hasLength(1));
+        expect(uncaught.single, isA<StateError>());
+      },
+    );
+
+    test('onError and handleError both keep the error from escaping', () async {
+      final uncaught = <Object>[];
+      final seen = <Object>[];
+      await runZonedGuarded(() async {
+        final ch = await Singleton.instance<Out, Cmd, Flaky>(Flaky.new);
+        ch.messages.listen((_) {}, onError: seen.add);
+        ch.messages.handleError(seen.add).listen((_) {});
+        ch.send(const Cmd(fail: true));
+        await Future.delayed(const Duration(milliseconds: 300));
+      }, (error, stack) => uncaught.add(error));
+
+      expect(uncaught, isEmpty);
+      expect(seen, hasLength(2));
+    });
+
+    test('the error keeps the original stack trace', () async {
+      final ch = await Singleton.instance<Out, Cmd, Flaky>(Flaky.new);
+      final captured = Completer<StackTrace>();
+      ch.messages.listen(
+        (_) {},
+        onError: (Object e, StackTrace st) {
+          if (!captured.isCompleted) captured.complete(st);
+        },
+      );
+      ch.send(const Cmd(fail: true));
+      final st = await captured.future.timeout(const Duration(seconds: 3));
+      expect(st.toString(), contains('reduce'));
+    });
+  });
+
   group('Singleton.instance', () {
     test('throws when the singleton fails to build', () async {
       await expectLater(

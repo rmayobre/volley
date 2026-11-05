@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:volley_api/volley_api.dart';
 
+import '../init/bootstrapper.dart';
 import 'singleton_instance.dart' as impl;
 
 /// A stateful reducer with exactly one live instance per subtype, shared
@@ -20,6 +21,27 @@ import 'singleton_instance.dart' as impl;
 ///   back in a different order. Choose this for stateless or
 ///   re-entrancy-safe work, and for any singleton that is called back from
 ///   inside its own [reduce] (see the deadlock note on [SerializedSingleton]).
+///
+/// ## Errors
+///
+/// If [reduce] throws (or the singleton fails to build), the singleton and
+/// everything else keep running. The failure is reported to callers as an
+/// **error event on the channel's `messages` stream**, with the original error
+/// and stack trace, and a failed build makes [Singleton.instance] throw.
+///
+/// Like any stream error, it is *uncaught* (and ends a Dart program) unless
+/// something handles it, so give each listener an `onError`:
+///
+/// ```dart
+/// channel.messages.listen(
+///   (state) => print(state),
+///   onError: (Object error, StackTrace stack) => print('failed: $error'),
+/// );
+/// ```
+///
+/// Replies are not tied to the call that caused them: every listener on a
+/// channel sees every reply and every error for that singleton, whichever
+/// caller sent the message.
 ///
 /// A [reduce] with no `await` in it can never overlap with itself, so for such
 /// reducers both flavours behave identically.
@@ -54,7 +76,12 @@ sealed class Singleton<I extends Message, O extends Message> {
     I extends Message,
     O extends Message,
     T extends Singleton<I, O>
-  >(T Function() build) => impl.singletonInstance<I, O, T>(build);
+  >(T Function() build) async {
+    // Singletons live in the shared host that `initialize()` starts; without
+    // it this would wait forever for a reply that can never come.
+    await Bootstrapper.initialize();
+    return impl.singletonInstance<I, O, T>(build);
+  }
 }
 
 /// A [Singleton] that handles **one message at a time, in order**.

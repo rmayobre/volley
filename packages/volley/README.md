@@ -110,9 +110,18 @@ final channel = await Singleton.instance<CounterState, CounterEvent, Counter>(Co
 channel.send(const Increment());
 ```
 
-If a singleton's `reduce` throws, the error is delivered as an error event on
-the channel's `messages` stream, and the singleton (and everything else)
-keeps running. If it fails to build, `Singleton.instance` throws.
+If a singleton's `reduce` throws, the singleton (and everything else) keeps
+running and the error is delivered as an **error event on the channel's
+`messages` stream**, with its original stack trace. As with any stream error,
+it is uncaught (and ends a Dart program) unless a listener handles it, so pass
+an `onError`:
+
+```dart
+channel.messages.listen(print, onError: (Object e, StackTrace s) => log(e));
+```
+
+Replies aren't tied to the message that caused them: every listener on a
+channel sees every reply and error for that singleton. If it fails to build, `Singleton.instance` throws.
 
 Pick the flavour that matches how `reduce` uses `await`:
 

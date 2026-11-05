@@ -8,7 +8,6 @@ import '../../coroutine/coroutine_executor.dart';
 import '../../coroutine/coroutine_impl.dart';
 import '../../coroutine/coroutine_message.dart' show CoroutineMessage;
 import '../../coroutine/coroutine_result.dart';
-import '../../singleton/singleton.dart';
 import '../../singleton/io/singleton_actor.dart';
 import '../../singleton/io/singleton_instance.dart';
 import '../../singleton/io/singleton_operation.dart';
@@ -43,7 +42,12 @@ final class Bootstrapper {
       _host = host;
       singletonSendPort = (host.channel as IsolateChannel).sendPort;
     }
-    coroutineChannel = await Singleton.instance(CoroutineExecutor.new);
+    // Not Singleton.instance: that waits for this very initialization.
+    coroutineChannel = await singletonInstance<
+      CoroutineResult,
+      CoroutineMessage,
+      CoroutineExecutor
+    >(CoroutineExecutor.new);
   }
 
   /// Stops everything [initialize] started so the program can exit.

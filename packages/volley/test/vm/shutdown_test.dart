@@ -83,6 +83,12 @@ void main() {
       expect(r.exitCode, isNull, reason: 'process should still be running');
     });
 
+    test('Singleton.instance works as the very first call', () async {
+      final r = await _run('singleton_first.dart', Duration(seconds: 60));
+      expect(r.exitCode, 0, reason: r.output);
+      expect(r.output, contains('singleton first ok'));
+    });
+
     test('actor() works as the very first call', () async {
       final r = await _run('actor_first.dart', Duration(seconds: 60));
       expect(r.exitCode, 0, reason: r.output);
