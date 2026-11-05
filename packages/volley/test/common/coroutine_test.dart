@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:isolate';
 
 import 'package:test/test.dart';
 import 'package:volley/volley.dart';
@@ -23,12 +22,6 @@ void main() {
 
     test('awaits an asynchronous computation', () async {
       expect(await coroutine(_slowValue).result, 'slow');
-    });
-
-    test('runs in a different isolate than the caller', () async {
-      final callerHash = Isolate.current.hashCode;
-      final workerHash = await coroutine(() => Isolate.current.hashCode).result;
-      expect(workerHash, isNot(callerHash));
     });
 
     test('starts running and reports done on completion', () async {

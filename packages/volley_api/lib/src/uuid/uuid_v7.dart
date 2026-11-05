@@ -19,13 +19,15 @@ String uuidV7() {
   final rng = Random.secure();
   final bytes = Uint8List(16);
 
-  // 48-bit Unix timestamp (big-endian)
-  bytes[0] = (ms >> 40) & 0xFF;
-  bytes[1] = (ms >> 32) & 0xFF;
-  bytes[2] = (ms >> 24) & 0xFF;
-  bytes[3] = (ms >> 16) & 0xFF;
-  bytes[4] = (ms >> 8) & 0xFF;
-  bytes[5] = ms & 0xFF;
+  // 48-bit Unix timestamp (big-endian). Uses division rather than bit
+  // shifts: on the web, ints are JS numbers and `>>` only operates on 32 bits,
+  // which would silently corrupt the upper bytes.
+  bytes[0] = (ms ~/ 0x10000000000) % 256;
+  bytes[1] = (ms ~/ 0x100000000) % 256;
+  bytes[2] = (ms ~/ 0x1000000) % 256;
+  bytes[3] = (ms ~/ 0x10000) % 256;
+  bytes[4] = (ms ~/ 0x100) % 256;
+  bytes[5] = ms % 256;
 
   // version nibble (0x7) + 12-bit rand_a
   final randA = rng.nextInt(0x1000);

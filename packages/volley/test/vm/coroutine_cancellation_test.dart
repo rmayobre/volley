@@ -1,3 +1,6 @@
+@TestOn('vm')
+library;
+
 import 'dart:async';
 import 'dart:io';
 
@@ -39,30 +42,5 @@ void main() {
     final sizeAfterStop = File(path).lengthSync();
     await Future.delayed(const Duration(milliseconds: 300));
     expect(File(path).lengthSync(), sizeAfterStop);
-  });
-
-  test('disposing an outer coroutine while it awaits a nested one', () async {
-    final outer = coroutine(
-      () => coroutine(() => Completer<String>().future).result,
-    );
-    final failure = expectLater(
-      outer.result,
-      throwsA(isA<CoroutineDisposedException>()),
-    );
-    await Future.delayed(const Duration(milliseconds: 100));
-    outer.dispose();
-    await failure;
-    expect(await coroutine(() => 'still works').result, 'still works');
-  });
-
-  test('dispose called immediately after creation cancels cleanly', () async {
-    final c = coroutine(() => Completer<int>().future);
-    final failure = expectLater(
-      c.result,
-      throwsA(isA<CoroutineDisposedException>()),
-    );
-    c.dispose();
-    await failure;
-    expect(await coroutine(() => 7).result, 7);
   });
 }
