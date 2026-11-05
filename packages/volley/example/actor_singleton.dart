@@ -21,7 +21,7 @@ final class CounterState implements Message {
 
 // --- Counter Singleton ---
 
-final class Counter extends Singleton<CounterEvent, CounterState> {
+final class Counter extends Singleton<CounterState, CounterEvent> {
   int _count = 0;
 
   @override
@@ -36,9 +36,8 @@ final class Counter extends Singleton<CounterEvent, CounterState> {
 
 // --- Actor message types ---
 //
-// Using a sealed parent for both request and response lets the actor's
-// Channel<WorkerMessage, WorkerMessage> avoid the channel type-parameter
-// inversion present in the underlying IsolateChannel implementation.
+// A sealed parent lets the actor use a single type for both request and
+// response; actors with distinct types work as well (send I, receive O).
 
 sealed class WorkerMessage implements Message {}
 
@@ -61,7 +60,7 @@ final class WorkerResponse implements WorkerMessage {
 // as it does on the main isolate — both resolve to the same singleton actor.
 
 Future<WorkerMessage> _workerReducer(WorkerMessage message) async {
-  final channel = await Singleton.instance<CounterEvent, CounterState, Counter>(
+  final channel = await Singleton.instance<CounterState, CounterEvent, Counter>(
     Counter.new,
   );
 
@@ -78,7 +77,7 @@ void main() async {
   await Bootstrapper.initialize();
 
   // Obtain the singleton channel from the main isolate and increment once.
-  final channel = await Singleton.instance<CounterEvent, CounterState, Counter>(
+  final channel = await Singleton.instance<CounterState, CounterEvent, Counter>(
     Counter.new,
   );
 

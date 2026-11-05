@@ -8,7 +8,12 @@ import '../../coroutine/coroutine_result.dart';
 final class Bootstrapper {
   static late final Channel<CoroutineResult, CoroutineMessage> coroutineChannel;
 
-  static Future<void> initialize() async {
+  static Future<void>? _initialization;
+
+  /// Safe to call any number of times: the channel is only created once.
+  static Future<void> initialize() => _initialization ??= _initialize();
+
+  static Future<void> _initialize() async {
     coroutineChannel = _WebCoroutineChannel();
   }
 }

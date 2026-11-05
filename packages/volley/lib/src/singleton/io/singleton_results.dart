@@ -10,10 +10,10 @@ final class SingletonConstructed
     implements SingletonResult {}
 
 @internal
-final class SingletonResponse<O extends Message>
+final class SingletonResponse<I extends Message>
     with DistinctMessage
     implements SingletonResult {
-  final O response;
+  final I response;
 
   SingletonResponse(this.response);
 }

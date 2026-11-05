@@ -31,7 +31,7 @@ final class CounterState implements Message {
 
 // --- Singleton ---
 
-final class Counter extends Singleton<CounterEvent, CounterState> {
+final class Counter extends Singleton<CounterState, CounterEvent> {
   int _count = 0;
 
   @override
@@ -53,7 +53,7 @@ final class Counter extends Singleton<CounterEvent, CounterState> {
 void main() async {
   await Bootstrapper.initialize();
 
-  final channel = await Singleton.instance<CounterEvent, CounterState, Counter>(
+  final channel = await Singleton.instance<CounterState, CounterEvent, Counter>(
     Counter.new,
   );
 
@@ -71,7 +71,7 @@ void main() async {
   channel.send(const Reset()); // CounterState(count: 0)
 
   // Calling instance() again returns the cached channel; factory is ignored.
-  final same = await Singleton.instance<CounterEvent, CounterState, Counter>(
+  final same = await Singleton.instance<CounterState, CounterEvent, Counter>(
     Counter.new,
   );
 

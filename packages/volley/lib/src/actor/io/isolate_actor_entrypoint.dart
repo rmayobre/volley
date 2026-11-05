@@ -38,7 +38,7 @@ void entrypoint(IsolateEntrypointArgs args) async {
 
 @internal
 final class IsolateEntrypointArgs<I extends Object, O extends Object> {
-  final FutureOr<O> Function(I) reducer;
+  final FutureOr<I> Function(O) reducer;
   final SendPort sendPort;
   final SendPort handshakeSendPort;
   final SendPort? singletonSendPort;
@@ -51,7 +51,7 @@ final class IsolateEntrypointArgs<I extends Object, O extends Object> {
   });
 
   FutureOr<Object>? reduce(dynamic message) {
-    if (message is! I) return null;
+    if (message is! O) return null;
     return reducer(message);
   }
 }

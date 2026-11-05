@@ -20,11 +20,11 @@ final class SingletonInit<T extends Singleton<Message, Message>>
 }
 
 @internal
-final class SingletonMessage<I extends Message>
+final class SingletonMessage<O extends Message>
     with DistinctMessage
     implements SingletonOperation {
   final Type singletonType;
-  final I message;
+  final O message;
   final SendPort? replyTo;
 
   SingletonMessage(this.singletonType, this.message, {this.replyTo});

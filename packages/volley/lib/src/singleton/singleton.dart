@@ -9,7 +9,7 @@ import 'singleton_instance.dart' as impl;
 /// calls [Singleton.instance] with the same type.
 ///
 /// ```dart
-/// final class Counter extends Singleton<CounterEvent, CounterState> {
+/// final class Counter extends Singleton<CounterState, CounterEvent> {
 ///   int _count = 0;
 ///
 ///   @override
@@ -24,12 +24,15 @@ import 'singleton_instance.dart' as impl;
 /// }
 /// ```
 abstract class Singleton<I extends Message, O extends Message> {
-  FutureOr<O> reduce(I event);
+  /// Handles one event sent by a caller ([O]) and produces the response ([I])
+  /// delivered back to callers. Type parameters follow [Channel]'s convention:
+  /// [I] is what callers receive and [O] is what callers send.
+  FutureOr<I> reduce(O event);
 
   /// Returns the shared [Channel] for the [Singleton] subtype [T], building
   /// it via [build] on first access. Subsequent calls with the same [T]
   /// return the cached channel and ignore [build].
-  static Future<Channel<O, I>> instance<
+  static Future<Channel<I, O>> instance<
     I extends Message,
     O extends Message,
     T extends Singleton<I, O>

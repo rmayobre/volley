@@ -10,13 +10,13 @@ import 'singleton_send_port.dart';
 
 final _channels = <Type, Channel<dynamic, dynamic>>{};
 
-Future<Channel<O, I>> singletonInstance<
+Future<Channel<I, O>> singletonInstance<
   I extends Message,
   O extends Message,
   T extends Singleton<I, O>
 >(T Function() build) async {
   final cached = _channels[T];
-  if (cached != null) return cached as Channel<O, I>;
+  if (cached != null) return cached as Channel<I, O>;
 
   final replyPort = ReceivePort();
   singletonSendPort?.send(
@@ -34,23 +34,23 @@ final class _SingletonChannel<
   I extends Message,
   O extends Message
 >
-    implements Channel<O, I> {
+    implements Channel<I, O> {
   final _replyPort = ReceivePort();
-  final _controller = StreamController<O>.broadcast();
+  final _controller = StreamController<I>.broadcast();
 
   _SingletonChannel() {
     _replyPort.listen((msg) {
-      if (msg is SingletonResponse) _controller.add(msg.response as O);
+      if (msg is SingletonResponse) _controller.add(msg.response as I);
     });
   }
 
   @override
-  Stream<O> get messages => _controller.stream;
+  Stream<I> get messages => _controller.stream;
 
   @override
-  void send(I message) {
+  void send(O message) {
     singletonSendPort?.send(
-      SingletonMessage<I>(T, message, replyTo: _replyPort.sendPort),
+      SingletonMessage<O>(T, message, replyTo: _replyPort.sendPort),
     );
   }
 }

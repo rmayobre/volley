@@ -12,13 +12,13 @@ import '../singleton.dart';
 final _instances = <Type, Singleton<dynamic, dynamic>>{};
 final _channels = <Type, Channel<dynamic, dynamic>>{};
 
-Future<Channel<O, I>> singletonInstance<
+Future<Channel<I, O>> singletonInstance<
   I extends Message,
   O extends Message,
   T extends Singleton<I, O>
 >(T Function() build) async {
   final cached = _channels[T];
-  if (cached != null) return cached as Channel<O, I>;
+  if (cached != null) return cached as Channel<I, O>;
 
   final instance = _instances.putIfAbsent(T, build) as T;
   final channel = _WebSingletonChannel<I, O>(instance);
@@ -27,17 +27,17 @@ Future<Channel<O, I>> singletonInstance<
 }
 
 final class _WebSingletonChannel<I extends Message, O extends Message>
-    implements Channel<O, I> {
+    implements Channel<I, O> {
   final Singleton<I, O> _singleton;
-  final _controller = StreamController<O>.broadcast();
+  final _controller = StreamController<I>.broadcast();
 
   _WebSingletonChannel(this._singleton);
 
   @override
-  Stream<O> get messages => _controller.stream;
+  Stream<I> get messages => _controller.stream;
 
   @override
-  void send(I message) {
+  void send(O message) {
     scheduleMicrotask(() async {
       _controller.add(await _singleton.reduce(message));
     });

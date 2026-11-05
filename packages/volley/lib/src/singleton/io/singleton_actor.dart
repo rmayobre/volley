@@ -9,8 +9,8 @@ import 'singleton_results.dart';
 final _singletons = <Type, Singleton<dynamic, dynamic>>{};
 
 @internal
-Future<Actor<SingletonOperation, SingletonResult>> spawnSingletonActor() {
-  return actor<SingletonOperation, SingletonResult>((message) async {
+Future<Actor<SingletonResult, SingletonOperation>> spawnSingletonActor() {
+  return actor<SingletonResult, SingletonOperation>((message) async {
     switch (message) {
       case SingletonInit<Singleton<Message, Message>>():
         _singletons.putIfAbsent(message.singletonType, message.build);

@@ -56,6 +56,9 @@ class _EchoActor implements Actor<StringMessage, StringMessage> {
       _EchoChannel(_controller);
 
   @override
+  Future<Object?> get closed => _controller.done.then((_) => null);
+
+  @override
   Future<void> dispose() async => _controller.close();
 }
 

@@ -14,8 +14,16 @@ final class WebActor<I extends Message, O extends Message>
   @override
   final WebStreamChannel<I, O> channel;
 
-  const WebActor(this.channel);
+  final _closed = Completer<Object?>();
+
+  WebActor(this.channel);
 
   @override
-  Future<void> dispose() async => await channel.dispose();
+  Future<Object?> get closed => _closed.future;
+
+  @override
+  Future<void> dispose() async {
+    await channel.dispose();
+    if (!_closed.isCompleted) _closed.complete(null);
+  }
 }

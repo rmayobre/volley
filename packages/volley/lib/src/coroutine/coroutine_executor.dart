@@ -8,7 +8,7 @@ import 'coroutine_message.dart';
 import 'coroutine_result.dart';
 
 final class CoroutineExecutor
-    implements Singleton<CoroutineMessage, CoroutineResult> {
+    implements Singleton<CoroutineResult, CoroutineMessage> {
   final _activeJobs = <String, (Isolate, ReceivePort)>{};
   final _pendingCancels = <String>{};
 

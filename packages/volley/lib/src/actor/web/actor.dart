@@ -10,22 +10,20 @@ import 'web_actor.dart';
 /// On web platforms, [dart:isolate] is unavailable, so messages are processed
 /// on the main thread instead of a dedicated isolate.
 ///
-/// [reducer] is called directly for every message of type [I] sent on
-/// [WebActor.channel]. The result of type [O] is emitted on
-/// [WebActor.responses].
+/// [reducer] is called directly for every message of type [O] sent on
+/// [WebActor.channel]. The result of type [I] is received on the same
+/// channel's `messages` stream.
 ///
 /// ```dart
-/// String echo(String message) => message;
-///
 /// void main() async {
-///   final a = await actor<String, String>(echo);
-///   a.responses.listen(print);
-///   a.channel.send('hello'); // prints: hello
-///   await a.dispose();
+///   final a = await actor<Response, Request>(handle);
+///   a.channel.messages.listen(print); // receives Response (I)
+///   a.channel.send(Request()); // sends Request (O)
+///   a.dispose();
 /// }
 /// ```
 Future<Actor<I, O>> actor<I extends Message, O extends Message>(
-  FutureOr<O> Function(I) reducer,
+  FutureOr<I> Function(O) reducer,
 ) async {
   final channel = WebStreamChannel<I, O>();
   return WebActor<I, O>(channel);

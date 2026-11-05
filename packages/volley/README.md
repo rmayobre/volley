@@ -27,8 +27,12 @@ void main() async {
 
 ### `actor<I, O>(reducer)`
 
-A dedicated isolate running one `FutureOr<O> Function(I)` reducer for its
-whole lifetime, talking back over `Actor.channel`.
+A dedicated isolate running one `FutureOr<I> Function(O)` reducer for its
+whole lifetime, talking back over `Actor.channel`. Type parameters follow
+`Channel`'s convention from the caller's side: `I` is what you *receive*
+(the reducer's output) and `O` is what you *send* (the reducer's input).
+If the reducer throws, the actor closes itself and `Actor.closed` completes
+with the error (`null` after a normal `dispose()`).
 
 ```dart
 String echo(String message) => message;
@@ -61,7 +65,8 @@ them — see
 
 ### `Singleton<I, O>`
 
-A stateful reducer with exactly one live instance per subtype, shared across
+A stateful reducer (`FutureOr<I> reduce(O event)`: `I` is what callers
+receive, `O` is what they send) with exactly one live instance per subtype, shared across
 every isolate (native) or the single main thread (web) that resolves it:
 
 ```dart
@@ -72,7 +77,7 @@ final class CounterState implements Message {
   const CounterState(this.count);
 }
 
-final class Counter extends Singleton<CounterEvent, CounterState> {
+final class Counter extends Singleton<CounterState, CounterEvent> {
   int _count = 0;
 
   @override
@@ -84,7 +89,7 @@ final class Counter extends Singleton<CounterEvent, CounterState> {
   }
 }
 
-final channel = await Singleton.instance<CounterEvent, CounterState, Counter>(Counter.new);
+final channel = await Singleton.instance<CounterState, CounterEvent, Counter>(Counter.new);
 channel.send(const Increment());
 ```
 

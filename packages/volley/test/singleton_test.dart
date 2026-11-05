@@ -19,7 +19,7 @@ final class Total implements Message {
   const Total(this.value);
 }
 
-final class Counter extends Singleton<CounterEvent, Total> {
+final class Counter extends Singleton<Total, CounterEvent> {
   int _total = 0;
 
   @override
@@ -40,7 +40,7 @@ final class Echo extends Singleton<Total, Total> {
 }
 
 Future<Channel<Total, CounterEvent>> _counter() =>
-    Singleton.instance<CounterEvent, Total, Counter>(Counter.new);
+    Singleton.instance<Total, CounterEvent, Counter>(Counter.new);
 
 void main() {
   setUpAll(() => Bootstrapper.initialize());
@@ -67,7 +67,7 @@ void main() {
     test('ignores the factory on subsequent calls', () async {
       final first = await _counter();
       var builtAgain = false;
-      final second = await Singleton.instance<CounterEvent, Total, Counter>(() {
+      final second = await Singleton.instance<Total, CounterEvent, Counter>(() {
         builtAgain = true;
         return Counter();
       });
@@ -84,7 +84,7 @@ void main() {
       final viaCoroutine =
           await coroutine(() async {
             final inner =
-                await Singleton.instance<CounterEvent, Total, Counter>(
+                await Singleton.instance<Total, CounterEvent, Counter>(
                   Counter.new,
                 );
             final first = inner.messages.first;

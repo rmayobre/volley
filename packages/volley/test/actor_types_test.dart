@@ -16,21 +16,51 @@ Response _toResponse(Request r) => Response('n=${r.n}');
 void main() {
   setUpAll(() => Bootstrapper.initialize());
 
-  test(
-    'actor with distinct input/output types: send input, receive output',
-    () async {
-      final a = await actor<Request, Response>(_toResponse);
+  group('actor with distinct input and output types', () {
+    test(
+      'the caller sends the input type and receives the output type',
+      () async {
+        final a = await actor<Response, Request>(_toResponse);
+        addTearDown(a.dispose);
+
+        // Compile-time check as much as a runtime one: send takes Request,
+        // messages yields Response.
+        final Stream<Response> responses = a.channel.messages;
+        final reply = responses.first;
+        a.channel.send(const Request(3));
+
+        expect((await reply.timeout(const Duration(seconds: 3))).text, 'n=3');
+      },
+    );
+
+    test('handles several round trips', () async {
+      final a = await actor<Response, Request>(_toResponse);
       addTearDown(a.dispose);
 
-      // Documented contract: the reducer consumes I and emits O. The caller
-      // should therefore send Request and observe Response.
-      final channel = a.channel as dynamic;
-      final reply = (channel.messages as Stream).first;
-      channel.send(const Request(3));
-      final got = await reply.timeout(const Duration(seconds: 3));
-      expect(got, isA<Response>());
-      expect((got as Response).text, 'n=3');
-    },
-    skip: 'BUG: IsolateChannel<I,O> types are swapped; send() takes O, not I',
-  );
+      final replies = a.channel.messages.take(3).map((r) => r.text).toList();
+      for (var i = 0; i < 3; i++) {
+        a.channel.send(Request(i));
+      }
+      expect(await replies.timeout(const Duration(seconds: 3)), [
+        'n=0',
+        'n=1',
+        'n=2',
+      ]);
+    });
+
+    test('rejects unsendable input with UnsendableMessageException', () async {
+      final a = await actor<Response, _Boxed>((_) => const Response('x'));
+      addTearDown(a.dispose);
+      var n = 0;
+      expect(
+        () => a.channel.send(_Boxed(() => n++)),
+        throwsA(isA<UnsendableMessageException>()),
+      );
+    });
+  });
+}
+
+final class _Boxed implements Message {
+  final Object payload;
+  const _Boxed(this.payload);
 }
