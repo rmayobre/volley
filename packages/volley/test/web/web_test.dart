@@ -11,8 +11,6 @@ final class Num implements Message {
   const Num(this.value);
 }
 
-Num _double(Num m) => Num(m.value * 2);
-
 void main() {
   setUpAll(() => Bootstrapper.initialize());
 
@@ -57,21 +55,35 @@ void main() {
   });
 
   group('web actor', () {
-    test('closed is pending until dispose, then completes with null', () async {
-      final a = await actor<Num, Num>(_double);
-      var done = false;
-      a.closed.then((_) => done = true);
-      await Future.delayed(const Duration(milliseconds: 50));
-      expect(done, isFalse);
+    test('may use a closure over local state as its reducer', () async {
+      // Only possible because nothing is sent across an isolate boundary.
+      var calls = 0;
+      final a = await actor<Num, Num>((m) {
+        calls++;
+        return Num(m.value + calls);
+      });
+      addTearDown(a.dispose);
 
-      await a.dispose();
-      expect(await a.closed, isNull);
+      final reply = a.channel.messages.first;
+      a.channel.send(const Num(10));
+      expect((await reply).value, 11);
+      expect(calls, 1);
     });
 
-    test('dispose twice does not throw', () async {
-      final a = await actor<Num, Num>(_double);
-      await a.dispose();
-      await a.dispose();
+    test('handles messages one at a time, in order', () async {
+      // The first message is the slowest; a concurrent implementation would
+      // answer it last.
+      final a = await actor<Num, Num>((m) async {
+        await Future.delayed(Duration(milliseconds: 30 - m.value * 10));
+        return m;
+      });
+      addTearDown(a.dispose);
+
+      final replies = a.channel.messages.take(3).map((m) => m.value).toList();
+      for (var i = 0; i < 3; i++) {
+        a.channel.send(Num(i));
+      }
+      expect(await replies, [0, 1, 2]);
     });
   });
 }

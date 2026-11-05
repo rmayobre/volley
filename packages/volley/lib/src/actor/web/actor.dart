@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:volley_api/volley_api.dart';
 
-import '../../channel/web/web_stream_channel.dart';
 import 'web_actor.dart';
 
 /// Creates an [Actor] that runs the [reducer] on the current (main) thread.
@@ -11,8 +10,9 @@ import 'web_actor.dart';
 /// on the main thread instead of a dedicated isolate.
 ///
 /// [reducer] is called directly for every message of type [O] sent on
-/// [WebActor.channel]. The result of type [I] is received on the same
-/// channel's `messages` stream.
+/// [WebActor.channel], one at a time and in order. The result of type [I] is
+/// received on the same channel's `messages` stream. If [reducer] throws, the
+/// actor closes and [Actor.closed] completes with the error.
 ///
 /// ```dart
 /// void main() async {
@@ -25,6 +25,5 @@ import 'web_actor.dart';
 Future<Actor<I, O>> actor<I extends Message, O extends Message>(
   FutureOr<I> Function(O) reducer,
 ) async {
-  final channel = WebStreamChannel<I, O>();
-  return WebActor<I, O>(channel);
+  return WebActor<I, O>(reducer);
 }
