@@ -2,8 +2,8 @@
 
 Standard implementation of the volley concurrency framework: `actor()`,
 `coroutine()`, and `Singleton`, backed by real `dart:isolate`s on native
-platforms and an in-process stub anywhere isolates aren't available (see
-[`web`](../volley_workers), which swaps the stub for real Web Workers).
+platforms and in-process (main thread) implementations on the web. Real Web
+Workers are not part of this package.
 
 Re-exports everything from [`volley_api`](../volley_api), so importing
 `package:volley/volley.dart` is enough for both the interfaces and the
@@ -152,25 +152,41 @@ and a worker actor.
 
 `actor()` and `Bootstrapper` are each three files behind one switchboard —
 `stub/` (throws `UnimplementedError`), `io/` (real isolates), `web/` (an
-in-process shim; real Web Workers come from
-[`volley_workers`](../volley_workers) instead) — selected at compile time.
-See the root `CLAUDE.md` for the exact shape and where to add a new one.
+in-process implementation on the main thread) — selected at compile time with
+a conditional export (`dart.library.io` / `dart.library.js_interop`).
+
+## Testing
+
+`dart test` runs each test on the VM and in Chrome (`dart_test.yaml`). Tests
+live in `test/common/` (both platforms), `test/vm/` (needs `dart:isolate` or
+`dart:io`) and `test/web/` (browser only), selected with `@TestOn`. Use
+`dart test -p vm` if no browser is installed.
 
 ## Best practices
 
-- **Call `Bootstrapper.initialize()` exactly once, before anything else.**
-  Every primitive here depends on it having run; skipping it, or calling it
-  from inside a spawned isolate's own `main()`, isn't necessary — the
-  isolate entrypoint already calls it for you.
-- **Keep `actor()` reducers top-level or static.** If you need captured
-  context, pass it as part of the message instead of closing over it.
+- **`Bootstrapper.initialize()` is safe to repeat.** `actor()` and
+  `Singleton.instance()` call it for you; `coroutine()` needs it to have run,
+  so `await Bootstrapper.initialize()` once at startup. Spawned isolates
+  bootstrap themselves.
+- **Call `Bootstrapper.shutdown()` when you're done** so a native program can
+  exit on its own (or call `exit`). Dispose your actors first.
+- **Keep `actor()` reducers top-level or static** if the code runs on native
+  platforms. If you need captured context, pass it as part of the message
+  instead of closing over it. (On the web a closure works, since nothing is
+  sent to another isolate, but code that must run on both shouldn't rely on
+  it.)
 - **Prefer `coroutine()` over `actor()` for one-shot work.** `coroutine()`
   reuses a shared executor isolate; spawning a fresh `actor()` per job pays
   isolate-startup cost every time for no benefit once the work is done.
 - **Dispose actors you spawn.** `Actor` implements `Disposable` — an
-  undisposed `actor()` leaves its isolate running for the life of the app.
-  `Singleton`s are intentionally *not* disposed by application code; they
-  live for the process's lifetime by design.
+  undisposed `actor()` leaves its isolate running until you dispose it or the
+  program exits. Watch `Actor.closed` to learn when, and why, an actor stopped.
+- **Choose the right singleton flavour.** Use `SerializedSingleton` unless
+  `reduce` is stateless, re-entrancy safe, or must be called back from inside
+  itself. Singletons that implement `Disposable` are disposed by
+  `Bootstrapper.shutdown()`.
+- **Handle singleton errors.** Give every `channel.messages.listen` an
+  `onError`.
 - **Don't invent a fourth `stub/io/web` variant ad hoc.** Follow the
-  existing pattern (see `CLAUDE.md`) so platform selection stays consistent
-  across the whole workspace.
+  existing pattern so platform selection stays consistent across the whole
+  workspace.

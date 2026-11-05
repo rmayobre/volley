@@ -1,6 +1,6 @@
 name: volley_api
 description: Interface APIs for the volley concurrency framework.
-version: 0.0.1
+version: 0.1.0
 repository: https://github.com/rmayobre/volley-api
 resolution: workspace
 

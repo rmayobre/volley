@@ -1,9 +1,6 @@
-## 0.0.1
+# Changelog
 
-- Initial version.
-- Isolate based Actors.
-- MessageBus for Global messaging.
-- Isolate based Coroutines.
-- Disposable interface and auto dispose function.
-- Node system for Isolate/Actor referencing.
-- Pool system for concurrent resource allocating.
+Each package keeps its own changelog:
+
+* [`volley`](packages/volley/CHANGELOG.md)
+* [`volley_api`](packages/volley_api/CHANGELOG.md)
