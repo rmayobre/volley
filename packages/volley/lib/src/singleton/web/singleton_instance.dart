@@ -39,7 +39,11 @@ final class _WebSingletonChannel<I extends Message, O extends Message>
   @override
   void send(O message) {
     scheduleMicrotask(() async {
-      _controller.add(await _singleton.reduce(message));
+      try {
+        _controller.add(await _singleton.reduce(message));
+      } catch (e, st) {
+        _controller.addError(e, st);
+      }
     });
   }
 }

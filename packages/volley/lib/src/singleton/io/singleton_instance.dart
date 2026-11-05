@@ -22,8 +22,15 @@ Future<Channel<I, O>> singletonInstance<
   singletonSendPort?.send(
     SingletonInit<T>(T, build, replyTo: replyPort.sendPort),
   );
-  await replyPort.first;
+  final reply = await replyPort.first;
   replyPort.close();
+  if (reply is SingletonFailure) {
+    // Don't cache anything: a later call may retry building.
+    Error.throwWithStackTrace(
+      reply.error,
+      StackTrace.fromString(reply.stackTrace),
+    );
+  }
   final channel = _SingletonChannel<T, I, O>();
   _channels[T] = channel;
   return channel;
@@ -40,7 +47,15 @@ final class _SingletonChannel<
 
   _SingletonChannel() {
     _replyPort.listen((msg) {
-      if (msg is SingletonResponse) _controller.add(msg.response as I);
+      switch (msg) {
+        case SingletonResponse():
+          _controller.add(msg.response as I);
+        case SingletonFailure():
+          _controller.addError(
+            msg.error,
+            StackTrace.fromString(msg.stackTrace),
+          );
+      }
     });
   }
 

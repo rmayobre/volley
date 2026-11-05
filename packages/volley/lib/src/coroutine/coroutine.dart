@@ -18,7 +18,17 @@ Coroutine<R> coroutine<R>(Computation<R> compute) {
   subscription = channel.messages.listen((message) {
     if (message.id != job.id) return;
     subscription?.cancel();
-    if (!message.isCancelled) impl.complete(message.value as R);
+    if (message.isCancelled) return;
+    if (message.isFailed) {
+      impl.completeError(
+        message.error!,
+        message.stackTrace == null
+            ? null
+            : StackTrace.fromString(message.stackTrace!),
+      );
+    } else {
+      impl.complete(message.value as R);
+    }
   });
 
   // Cancel the subscription once the result settles (normal completion or

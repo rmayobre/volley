@@ -58,8 +58,11 @@ final class CoroutineExecutor
           resultPort.close();
           _activeJobs.remove(message.id);
           if (raw is _ComputationError) {
-            // ignore: only_throw_errors
-            throw raw.error;
+            return CoroutineResult.failed(
+              message.id,
+              raw.error,
+              raw.stackTrace,
+            );
           }
           return CoroutineResult(message.id, raw);
         } on StateError {
@@ -84,7 +87,16 @@ void _runInSubIsolate(_SubIsolateArgs args) async {
   try {
     args.resultPort.send(await args.compute());
   } catch (e, st) {
-    args.resultPort.send(_ComputationError(e, st));
+    final stackText = st.toString();
+    try {
+      args.resultPort.send(_ComputationError(e, stackText));
+    } on ArgumentError {
+      // The error object itself can't cross the isolate boundary (e.g. it
+      // holds a closure); fall back to a text description of it.
+      args.resultPort.send(
+        _ComputationError(RemoteError(e.toString(), stackText), stackText),
+      );
+    }
   }
 }
 
@@ -98,7 +110,7 @@ final class _SubIsolateArgs {
 
 final class _ComputationError {
   final Object error;
-  final StackTrace stackTrace;
+  final String stackTrace;
 
   const _ComputationError(this.error, this.stackTrace);
 }

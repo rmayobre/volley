@@ -16,7 +16,9 @@ with these types indirectly, through `volley`'s exports.
 - **`Message`** — marker interface (`@immutable`) for anything sent through
   a `Channel`/`Actor`. Your request/response/event types implement this.
 - **`Actor<I, O>`** — a running unit of concurrency: something that consumes
-  `I` and produces `O` over its `channel`, and can be `dispose()`d.
+  `O` and produces `I` (a `Channel<I, O>` from the caller's side: receive
+  `I`, send `O`), and can be `dispose()`d. `Actor.closed` completes when it
+  closes, with the error if it failed.
 - **`Channel<I, O>`** — bidirectional: `IngressChannel<I>` (`Stream<I>
   messages`) + `EgressChannel<O>` (`void send(O message)`).
 - **`Disposable`** / **`Disposables`** — a `dispose()` contract, plus

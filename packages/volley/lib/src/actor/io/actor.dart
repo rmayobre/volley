@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:isolate';
 
+import 'package:meta/meta.dart';
+
 import 'package:volley_api/volley_api.dart';
 
 import '../../channel/io/isolate_channel.dart';
@@ -31,7 +33,18 @@ import 'isolate_actor_entrypoint.dart';
 /// ```
 Future<Actor<I, O>> actor<I extends Message, O extends Message>(
   FutureOr<I> Function(O) reducer,
-) async {
+) => spawnActor<I, O>(reducer);
+
+const Object _isolateDied = Object();
+
+/// Implementation of [actor]. [entry] replaces the isolate's entrypoint and
+/// exists so tests can simulate an isolate that fails while starting up.
+@visibleForTesting
+@internal
+Future<Actor<I, O>> spawnActor<I extends Message, O extends Message>(
+  FutureOr<I> Function(O) reducer, {
+  void Function(IsolateEntrypointArgs<I, O>) entry = entrypoint,
+}) async {
   final handshakePort = ReceivePort();
   final responsePort = ReceivePort();
   final arguments = IsolateEntrypointArgs(
@@ -43,13 +56,32 @@ Future<Actor<I, O>> actor<I extends Message, O extends Message>(
   final errorPort = ReceivePort();
   final exitPort = ReceivePort();
   final isolate = await Isolate.spawn(
-    entrypoint,
+    entry,
     arguments,
     onError: errorPort.sendPort,
     onExit: exitPort.sendPort,
   );
-  final actorSendPort = await handshakePort.first as SendPort;
+  final errors = errorPort.asBroadcastStream();
+  final exits = exitPort.asBroadcastStream();
+
+  // The isolate may die before it ever completes the handshake (e.g. it
+  // fails while bootstrapping); waiting on the handshake alone would hang.
+  Object? startupError;
+  final errorWatch = errors.listen((m) => startupError ??= isolateError(m));
+  final Object handshake = await Future.any<Object>([
+    handshakePort.first.then((message) => message as Object),
+    exits.first.then((_) => _isolateDied),
+  ]);
+  await errorWatch.cancel();
   handshakePort.close();
+  if (handshake is! SendPort) {
+    responsePort.close();
+    errorPort.close();
+    exitPort.close();
+    throw startupError ??
+        StateError('The actor isolate exited before it finished starting.');
+  }
+  final actorSendPort = handshake;
   final channel = IsolateChannel<I, O>(
     receivePort: responsePort,
     sendPort: actorSendPort,
@@ -60,5 +92,7 @@ Future<Actor<I, O>> actor<I extends Message, O extends Message>(
     isolate: isolate,
     errorPort: errorPort,
     exitPort: exitPort,
+    errors: errors,
+    exits: exits,
   );
 }

@@ -59,6 +59,10 @@ per job:
 final sum = await coroutine(() => _sumRange(0, 500000)).result;
 ```
 
+If the computation throws, `result` completes with that error (its type and
+stack trace are preserved when the error can cross isolates; otherwise a
+`RemoteError` describing it).
+
 Fire several off concurrently with `Future.wait` before awaiting any one of
 them — see
 [`example/concurrent_coroutines.dart`](example/concurrent_coroutines.dart).
@@ -92,6 +96,10 @@ final class Counter extends Singleton<CounterState, CounterEvent> {
 final channel = await Singleton.instance<CounterState, CounterEvent, Counter>(Counter.new);
 channel.send(const Increment());
 ```
+
+If a singleton's `reduce` throws, the error is delivered as an error event on
+the channel's `messages` stream, and the singleton (and everything else)
+keeps running. If it fails to build, `Singleton.instance` throws.
 
 Every subsequent call to `Singleton.instance<...>()` with the same type
 returns the *same* cached channel and ignores the `build` factory — the

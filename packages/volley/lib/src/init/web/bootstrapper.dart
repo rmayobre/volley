@@ -36,7 +36,13 @@ final class _WebCoroutineChannel
         case CoroutineDisposal():
           _controller.add(CoroutineResult.cancelled(message.id));
         case CoroutineTask():
-          _controller.add(CoroutineResult(message.id, await message.compute()));
+          try {
+            _controller.add(
+              CoroutineResult(message.id, await message.compute()),
+            );
+          } catch (e, st) {
+            _controller.add(CoroutineResult.failed(message.id, e, '$st'));
+          }
       }
     });
   }
