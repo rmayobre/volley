@@ -28,9 +28,9 @@ const coroutine = CoroutineWorker();
 
 /// Marks a class as a message: `volley_workers_gen` generates `toMap` /
 /// `fromMap` codecs for it so it can cross a web worker boundary.
-final class VolleyMessage {
-  const VolleyMessage();
+final class Encodable {
+  const Encodable();
 }
 
 /// Marks a class for `toMap` / `fromMap` generation.
-const volleyMessage = VolleyMessage();
+const encodable = Encodable();

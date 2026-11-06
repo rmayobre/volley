@@ -24,11 +24,11 @@ volley_api  <--  volley  <--  volley_workers
 ## Build-time flow
 
 ```
-foo.dart  (@actor / @coroutine / @volleyMessage, `part 'foo.gen.dart';`)
+foo.dart  (@actor / @coroutine / @encodable, `part 'foo.gen.dart';`)
    |  build_runner -> PartBuilder([WorkersGenerator()], '.gen.dart')
    v
 foo.gen.dart  (`part of 'foo.dart'`)
-   per @volleyMessage class: _$NameToMap / _$NameFromMap
+   per @encodable class: _$NameToMap / _$NameFromMap
    per @actor fn:            spawn<Fn>()   + <fn>WorkerMain()
    per @coroutine fn:        launch<Fn>()  + <fn>WorkerMain()
 ```
@@ -52,13 +52,13 @@ Errors surface as `InvalidGenerationSourceError` pointing at the element.
   that is a `Message`, returning a `Message` (optionally in `Future`/`FutureOr`).
 - `@coroutine`: top-level, non-generic, required positional parameters only;
   every parameter type and the result type must be convertible.
-- `@volleyMessage`: concrete, non-generic class with an unnamed constructor.
+- `@encodable`: concrete, non-generic class with an unnamed constructor.
   Each constructor parameter needs a public name and a matching field or getter;
   its type must be convertible.
 
 Convertible types: `null`, `bool`, `int`, `double`, `num`, `String`,
 `dart:typed_data` types, `BigInt`, `RegExp`, `DateTime`, `Duration`, enums,
-`List`/`Set`/`Iterable`, `Map<String, V>`, `@volleyMessage` classes, and
+`List`/`Set`/`Iterable`, `Map<String, V>`, `@encodable` classes, and
 `MapEncodableMessage` classes that provide `fromMap`. `Object` and `dynamic`
 pass through unchecked.
 
@@ -146,6 +146,6 @@ without running the builder.
 
 - Worker entrypoints are written by hand (two lines each).
 - Coroutines accept required positional parameters only.
-- Generated `@volleyMessage` codecs are top-level functions, not methods, so
+- Generated `@encodable` codecs are top-level functions, not methods, so
   messages do not implement `MapEncodableMessage` automatically.
 - No CI exists yet to compile the worker scripts before browser tests.

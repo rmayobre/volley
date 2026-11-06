@@ -16,13 +16,13 @@ const _coroutineChecker = TypeChecker.typeNamedLiterally(
 
 /// Generates, for one library, everything needed to run its `@actor` and
 /// `@coroutine` functions as an isolate or a web worker, and the codecs for
-/// its `@volleyMessage` classes.
+/// its `@encodable` classes.
 final class WorkersGenerator extends Generator {
   @override
   String? generate(LibraryReader library, BuildStep buildStep) {
     final out = <String>[];
 
-    for (final annotated in library.annotatedWith(volleyMessageChecker)) {
+    for (final annotated in library.annotatedWith(encodableChecker)) {
       out.add(_message(annotated.element));
     }
     for (final annotated in library.annotatedWith(_actorChecker)) {
@@ -41,26 +41,32 @@ final class WorkersGenerator extends Generator {
     ].join('\n');
   }
 
-  // --- @volleyMessage ------------------------------------------------------
+  // --- @encodable ------------------------------------------------------
 
   String _message(Element element) {
     if (element is! ClassElement) {
       throw InvalidGenerationSourceError(
-        '@volleyMessage can only annotate classes.',
+        '@encodable can only annotate classes.',
         element: element,
       );
     }
     final name = element.name!;
+    if (!messageChecker.isAssignableFrom(element)) {
+      throw InvalidGenerationSourceError(
+        '@encodable `$name` must implement Message.',
+        element: element,
+      );
+    }
     if (element.typeParameters.isNotEmpty) {
       throw InvalidGenerationSourceError(
-        '@volleyMessage does not support generic classes.',
+        '@encodable does not support generic classes.',
         element: element,
       );
     }
     final constructor = element.unnamedConstructor;
     if (constructor == null || element.isAbstract) {
       throw InvalidGenerationSourceError(
-        '@volleyMessage needs a concrete class with an unnamed constructor.',
+        '@encodable needs a concrete class with an unnamed constructor.',
         element: element,
       );
     }
@@ -72,7 +78,7 @@ final class WorkersGenerator extends Generator {
         final field = parameter.name!;
         if (field.startsWith('_')) {
           throw InvalidGenerationSourceError(
-            '@volleyMessage `$name`: constructor parameter `$field` is '
+            '@encodable `$name`: constructor parameter `$field` is '
             'private; use a public parameter name.',
             element: element,
           );
@@ -80,7 +86,7 @@ final class WorkersGenerator extends Generator {
         if (element.getField(field) == null &&
             element.getGetter(field) == null) {
           throw InvalidGenerationSourceError(
-            '@volleyMessage `$name`: constructor parameter `$field` has no '
+            '@encodable `$name`: constructor parameter `$field` has no '
             'matching field or getter named `$field`, so its value cannot '
             'be read when encoding the message.',
             element: element,

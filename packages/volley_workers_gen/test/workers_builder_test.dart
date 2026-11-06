@@ -8,7 +8,7 @@ import 'package:volley_workers/volley_workers.dart';
 
 part 'sample.gen.dart';
 
-@volleyMessage
+@encodable
 final class Ping implements Message {
   final String text;
   final List<int> numbers;
@@ -16,7 +16,7 @@ final class Ping implements Message {
   const Ping(this.text, {required this.numbers, this.at});
 }
 
-@volleyMessage
+@encodable
 final class Pong implements Message {
   final String text;
   const Pong(this.text);
@@ -68,13 +68,13 @@ part 'sample.gen.dart';
 
 enum Color { red, green }
 
-@volleyMessage
+@encodable
 final class Inner implements Message {
   final Color color;
   const Inner(this.color);
 }
 
-@volleyMessage
+@encodable
 final class Outer implements Message {
   final Inner inner;
   final DateTime when;
@@ -140,10 +140,17 @@ final class Outer implements Message {
       );
     });
 
+    test('@encodable classes that are not Messages', () async {
+      expect(
+        await errors('@encodable\nfinal class Plain {\n  const Plain();\n}'),
+        contains('must implement Message'),
+      );
+    });
+
     test('message properties of unsupported types', () async {
       expect(
         await errors('''
-@volleyMessage
+@encodable
 final class Bad implements Message {
   final void Function() callback;
   const Bad(this.callback);
@@ -156,7 +163,7 @@ final class Bad implements Message {
     test('message constructor parameters without a matching field', () async {
       expect(
         await errors('''
-@volleyMessage
+@encodable
 final class Bad implements Message {
   final String other;
   Bad(String text) : other = text;

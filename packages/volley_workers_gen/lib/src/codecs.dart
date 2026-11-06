@@ -3,8 +3,8 @@ import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:source_gen/source_gen.dart';
 
-const volleyMessageChecker = TypeChecker.typeNamedLiterally(
-  'VolleyMessage',
+const encodableChecker = TypeChecker.typeNamedLiterally(
+  'Encodable',
   inPackage: 'volley_workers',
 );
 
@@ -99,13 +99,13 @@ final class Codec {
       return '$expr.map((k, $v) => MapEntry(k, $value))';
     }
     if (element is ClassElement) {
-      if (volleyMessageChecker.hasAnnotationOf(element)) {
+      if (encodableChecker.hasAnnotationOf(element)) {
         return '${generatedName(name!)}ToMap($expr)';
       }
       if (mapEncodableChecker.isSuperOf(element)) return '$expr.toMap()';
     }
     throw UnsupportedWorkerType(
-      '`$type` cannot be sent to a worker. Annotate it with @volleyMessage or '
+      '`$type` cannot be sent to a worker. Annotate it with @encodable or '
       'implement MapEncodableMessage with a fromMap factory.',
     );
   }
@@ -153,7 +153,7 @@ final class Codec {
       return '($expr as Map).map((k, $v) => MapEntry<String, $valueType>(k as String, $value))';
     }
     if (element is ClassElement) {
-      if (volleyMessageChecker.hasAnnotationOf(element)) {
+      if (encodableChecker.hasAnnotationOf(element)) {
         return '${generatedName(name!)}FromMap(_\$volleyAsMap($expr))';
       }
       if (mapEncodableChecker.isSuperOf(element)) {
@@ -164,7 +164,7 @@ final class Codec {
       }
     }
     throw UnsupportedWorkerType(
-      '`$type` cannot be sent to a worker. Annotate it with @volleyMessage or '
+      '`$type` cannot be sent to a worker. Annotate it with @encodable or '
       'implement MapEncodableMessage with a fromMap factory.',
     );
   }

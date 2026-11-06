@@ -10,13 +10,13 @@ import 'package:volley_workers/volley_workers.dart';
 
 part 'workers.gen.dart';
 
-@volleyMessage
+@encodable
 final class Ping implements Message {
   final String text;
   const Ping(this.text);
 }
 
-@volleyMessage
+@encodable
 final class Pong implements Message {
   final String text;
   const Pong(this.text);
@@ -50,7 +50,7 @@ dart compile js -o echo.worker.js echo_worker.dart
 ```
 
 Actor messages and coroutine arguments/results cross the worker boundary as
-JS-safe values. `@volleyMessage` classes get generated codecs; coroutines
+JS-safe values. `@encodable` classes get generated codecs; coroutines
 accept primitives, lists, maps, typed data, enums, `DateTime`, `Duration`,
 `BigInt`, `RegExp` and message classes.
 

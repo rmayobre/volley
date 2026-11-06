@@ -1,7 +1,7 @@
 /// Code generation for `volley_workers`.
 ///
 /// For a source file `foo.dart` that contains `@actor`, `@coroutine` or
-/// `@volleyMessage` declarations, generates `foo.gen.dart`. Declare it in the
+/// `@encodable` declarations, generates `foo.gen.dart`. Declare it in the
 /// source file with `part 'foo.gen.dart';`.
 library;
 

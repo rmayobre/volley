@@ -1,4 +1,4 @@
-/// Helpers used by `@volleyMessage`-generated `toMap()`/`fromMap()` code
+/// Helpers used by `@encodable`-generated `toMap()`/`fromMap()` code
 /// (see `MapEncodableMessage`) to encode types that `jsify()`/`dartify()`
 /// don't understand natively — [RegExp] and [BigInt] — into values built
 /// entirely out of types they do (`String`, `bool`).

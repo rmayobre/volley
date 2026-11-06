@@ -2,7 +2,7 @@ import 'package:volley_workers/volley_workers.dart';
 
 part 'workers.gen.dart';
 
-@volleyMessage
+@encodable
 final class Ping implements Message {
   final String text;
   final List<int> numbers;
@@ -10,7 +10,7 @@ final class Ping implements Message {
   const Ping(this.text, {required this.numbers, this.at});
 }
 
-@volleyMessage
+@encodable
 final class Pong implements Message {
   final String text;
   final int total;
