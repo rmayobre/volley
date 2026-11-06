@@ -58,6 +58,18 @@ void main() {
       expect(await totals, [2, 5, 10]);
     });
 
+    test('request() returns the reply to that call, in order', () async {
+      await Singleton.request<Total, CounterEvent, Counter>(
+        Counter.new,
+        const Clear(),
+      );
+      final replies = await Future.wait([
+        for (final n in [1, 2, 3])
+          Singleton.request<Total, CounterEvent, Counter>(Counter.new, Add(n)),
+      ]);
+      expect(replies.map((t) => t.value), [1, 3, 6]);
+    });
+
     test('instance() returns the cached channel for the same type', () async {
       final a = await _counter();
       final b = await _counter();

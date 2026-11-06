@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:js_interop';
+import 'dart:js_interop_unsafe';
 
+import 'package:volley/volley.dart' show Singleton;
 import 'package:volley_api/volley_api.dart';
 import 'package:web/web.dart' as web;
+
+import '../singleton_registry.dart';
 
 // Wire protocol (all payloads are JS-safe via jsify/dartify):
 //   worker -> host  {t: 'ready'}                      actor handshake
@@ -11,6 +15,8 @@ import 'package:web/web.dart' as web;
 //   host   -> worker {t: 'run', a: <list>}            coroutine start
 //   worker -> host  {t: 'result', v: <value>}         coroutine result
 //   worker -> host  {t: 'error', e: <string>}         failure (either kind)
+//   worker -> host  {t: 'sreq', k: <key>, id, d}      singleton request
+//   host   -> worker {t: 'sres', id, d} | {t: 'serr', id, e}   its reply
 
 JSAny? _pack(Map<String, Object?> envelope) => envelope.jsify();
 
@@ -19,6 +25,27 @@ Map<String, Object?> _unpack(JSAny? data) =>
 
 Map<String, Object?> _asMap(Object? value) =>
     (value as Map).cast<String, Object?>();
+
+Future<void> _serveSingleton(
+  web.Worker worker,
+  Map<String, Object?> request,
+) async {
+  final id = request['id'];
+  try {
+    final key = request['k'] as String;
+    final handler = lookupSingleton(key);
+    if (handler == null) {
+      throw StateError(
+        'No singleton registered as $key. Call its register function on the '
+        'page before using it from a worker.',
+      );
+    }
+    final result = await handler(request['d']);
+    worker.postMessage(_pack({'t': 'sres', 'id': id, 'd': result}));
+  } catch (error) {
+    worker.postMessage(_pack({'t': 'serr', 'id': id, 'e': error.toString()}));
+  }
+}
 
 Object _toError(web.Event event) {
   final message =
@@ -82,6 +109,8 @@ final class _WebWorkerActor<I extends Message, O extends Message>
           switch (envelope['t']) {
             case 'msg':
               _channel.emit(decodeOutput(_asMap(envelope['d'])));
+            case 'sreq':
+              _serveSingleton(_worker, envelope);
             case 'error':
               _close(StateError(envelope['e'] as String));
           }
@@ -158,6 +187,8 @@ final class _WebWorkerCoroutine<R> implements Coroutine<R> {
               } catch (error) {
                 _finish(error: UnsendableMessageException(Object, error));
               }
+            case 'sreq':
+              _serveSingleton(_worker, envelope);
             case 'result':
               try {
                 _finish(value: decodeResult(envelope['v']));
@@ -213,6 +244,51 @@ Coroutine<R> launchCoroutineWorker<R>({
   required R Function(Object?) decodeResult,
 }) => _WebWorkerCoroutine<R>(web.Worker(workerScript.toJS), args, decodeResult);
 
+final _pendingSingletonCalls = <int, Completer<Object?>>{};
+var _nextSingletonCall = 0;
+
+/// Handles a singleton reply addressed to this worker. Returns whether
+/// [envelope] was one.
+bool _handleSingletonReply(Map<String, Object?> envelope) {
+  final type = envelope['t'];
+  if (type != 'sres' && type != 'serr') return false;
+  final call = _pendingSingletonCalls.remove(envelope['id']);
+  if (type == 'sres') {
+    call?.complete(envelope['d']);
+  } else {
+    call?.completeError(StateError(envelope['e'] as String));
+  }
+  return true;
+}
+
+bool get _inWorker => globalContext.has('importScripts');
+
+/// Sends [message] to the singleton registered under [key] and returns its
+/// reply. On the page this calls the singleton directly; inside a worker it
+/// asks the page, which owns the instance.
+Future<I>
+callSingleton<I extends Message, O extends Message, T extends Singleton<I, O>>({
+  required String key,
+  required O message,
+  required T Function() build,
+  required Object? Function(O message) encodeIn,
+  required I Function(Object? wire) decodeOut,
+}) {
+  if (!_inWorker) return Singleton.request<I, O, T>(build, message);
+  final id = _nextSingletonCall++;
+  final call = Completer<Object?>();
+  _pendingSingletonCalls[id] = call;
+  try {
+    _scope.postMessage(
+      _pack({'t': 'sreq', 'k': key, 'id': id, 'd': encodeIn(message)}),
+    );
+  } catch (error) {
+    _pendingSingletonCalls.remove(id);
+    return Future.error(UnsendableMessageException(O, error));
+  }
+  return call.future.then(decodeOut);
+}
+
 web.DedicatedWorkerGlobalScope get _scope =>
     globalContext as web.DedicatedWorkerGlobalScope;
 
@@ -226,6 +302,7 @@ void runActorWorker<I extends Message, O extends Message>({
   _scope.onmessage =
       ((web.MessageEvent event) {
         final envelope = _unpack(event.data);
+        if (_handleSingletonReply(envelope)) return;
         if (envelope['t'] != 'msg') return;
         // One message at a time, in order, like the isolate implementation.
         queue = queue.then((_) async {
@@ -250,6 +327,7 @@ void runCoroutineWorker<R>({
   _scope.onmessage =
       ((web.MessageEvent event) {
         final envelope = _unpack(event.data);
+        if (_handleSingletonReply(envelope)) return;
         if (envelope['t'] != 'run') return;
         () async {
           try {

@@ -25,4 +25,22 @@ void main() {
     expect(await c.result, 16);
     expect(c.isDone, isTrue);
   });
+
+  test('workers and the page share one page-owned singleton', () async {
+    final a = await spawnAccumulate(workerScript: 'accumulate.worker.js');
+    addTearDown(a.dispose);
+    final first = a.channel.messages.first;
+    a.channel.send(const Add(5));
+    expect((await first).value, 5);
+
+    final c = launchBump(2, workerScript: 'bump.worker.js');
+    expect(await c.result, 7);
+
+    // The page sees the state the workers built up.
+    expect((await requestCounter(const Add(1))).value, 8);
+
+    final second = a.channel.messages.first;
+    a.channel.send(const Add(10));
+    expect((await second).value, 18);
+  });
 }

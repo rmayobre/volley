@@ -45,6 +45,28 @@ Future<Channel<I, O>> singletonInstance<
   return channel;
 }
 
+/// One-shot request/response to the singleton host: the reply arrives on a
+/// port private to this call.
+Future<I> singletonRequest<
+  I extends Message,
+  O extends Message,
+  T extends Singleton<I, O>
+>(O message) async {
+  final replyPort = ReceivePort();
+  singletonSendPort?.send(
+    SingletonMessage<O>(T, message, replyTo: replyPort.sendPort),
+  );
+  final reply = await replyPort.first;
+  replyPort.close();
+  if (reply is SingletonFailure) {
+    Error.throwWithStackTrace(
+      reply.error,
+      StackTrace.fromString(reply.stackTrace),
+    );
+  }
+  return (reply as SingletonResponse).response as I;
+}
+
 final class _SingletonChannel<
   T extends Singleton<I, O>,
   I extends Message,

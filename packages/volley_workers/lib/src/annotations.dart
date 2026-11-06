@@ -34,3 +34,16 @@ final class Encodable {
 
 /// Marks a class for `toMap` / `fromMap` generation.
 const encodable = Encodable();
+
+/// See [singleton].
+final class SingletonWorker {
+  const SingletonWorker();
+}
+
+/// Marks a `Singleton` subclass so web workers can use it.
+///
+/// The singleton always lives on the page (or in the VM's shared host);
+/// workers reach it by message passing. `volley_workers_gen` generates
+/// `register<Name>()` and `request<Name>(message)`: `request<Name>` works
+/// everywhere (page, worker, VM) and returns the reply to that call.
+const singleton = SingletonWorker();

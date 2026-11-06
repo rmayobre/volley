@@ -131,13 +131,59 @@ Pass the URL as `workerScript` (default `<fn>.worker.js`). The builder cannot
 emit these entrypoints itself because a builder must declare its outputs up
 front and only produces one `.gen.dart` per source file.
 
+## Singletons
+
+A web worker is a separate JS context, so a `volley` singleton created inside
+one would be a private copy. To keep the VM's semantics (one instance shared by
+everyone), the **page owns every singleton** and workers reach it by message
+passing.
+
+```dart
+@singleton
+final class Counter extends SerializedSingleton<Total, Add> { ... }
+
+// generated: registerCounter() and requestCounter(Add) -> Future<Total>
+```
+
+`requestCounter` works everywhere:
+
+| Where it runs | What it does |
+| --- | --- |
+| VM (page or isolate) | `Singleton.request`: one-shot request to the shared singleton host. |
+| Web page | `Singleton.request`: runs the page's own instance. |
+| Web worker | Posts `{t:'sreq'}` to the page and awaits the matching reply. |
+
+```
+worker                                 page
+ | {t:'sreq', k:key, id:n, d:<map>} --->|  registry lookup (registerSingleton)
+ |                                      |  Singleton.request(build, decode(d))
+ |<--- {t:'sres', id:n, d:<map>} -------|  or {t:'serr', id:n, e:<text>}
+```
+
+- **Registration:** `register<Name>()` (generated) puts the singleton in the
+  page's registry under `<library uri>#<Name>`. The generated `spawn*` and
+  `launch*` functions call every registration in their library. If a worker
+  uses a singleton from another library, call its `register<Name>()` on the
+  page first; otherwise the request fails with a "No singleton registered"
+  error.
+- **Correlation:** `volley`'s singleton channel broadcasts every reply to every
+  listener, which is unsafe when several workers share it. `Singleton.request`
+  (added to `volley`) matches each reply to its own call and still honours
+  `SerializedSingleton` ordering.
+- **Messages** must be `@encodable` (or `MapEncodableMessage`); the generator
+  validates the singleton's input and output types like any other.
+- **Cost:** a worker's singleton call is an asynchronous round trip through the
+  page. Errors from `reduce` arrive as text.
+- **Lifetime:** the bridge lives as long as the worker; terminating a worker
+  drops its in-flight replies.
+
 ## Testing
 
 | Location | What it covers |
 | --- | --- |
 | `volley_workers_gen/test` | Builder output and validation errors, via `build_test`. |
 | `volley_workers/test/vm` | Generated actor and coroutine on isolates. |
-| `volley_workers/test/web` | Generated actor and coroutine in Chrome. Needs the worker scripts compiled first (see the test file) and must be run from `packages/volley_workers`: `dart test -p chrome test/web`. |
+| `volley_workers/test/web` | Generated actor, coroutine and the singleton bridge in Chrome. Needs the worker scripts compiled first (see the test file) and must be run from `packages/volley_workers`: `dart test -p chrome test/web`. |
 
 `example/workers.gen.dart` is checked in so the example and tests compile
 without running the builder.
@@ -145,6 +191,8 @@ without running the builder.
 ## Limitations and future work
 
 - Worker entrypoints are written by hand (two lines each).
+- Singletons are reached through `request<Name>` (request/reply); there is no
+  streaming channel to a singleton from a worker.
 - Coroutines accept required positional parameters only.
 - Generated `@encodable` codecs are top-level functions, not methods, so
   messages do not implement `MapEncodableMessage` automatically.

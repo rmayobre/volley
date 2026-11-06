@@ -19,4 +19,15 @@ void main() {
   test('generated coroutine runs in an isolate', () async {
     expect(await launchSum([1, 2, 3], 10).result, 16);
   });
+
+  test('actors, coroutines and the caller share one singleton', () async {
+    final a = await spawnAccumulate();
+    addTearDown(a.dispose);
+    final reply = a.channel.messages.first;
+    a.channel.send(const Add(5));
+    expect((await reply).value, 5);
+
+    expect(await launchBump(2).result, 7);
+    expect((await requestCounter(const Add(1))).value, 8);
+  });
 }

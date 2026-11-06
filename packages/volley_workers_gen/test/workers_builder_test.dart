@@ -47,6 +47,24 @@ Future<void> _build(String source, void Function(String) check) async {
   );
 }
 
+Future<String> errors(String body) async {
+  final readerWriter = TestReaderWriter(rootPackage: 'volley_workers_gen');
+  await readerWriter.testing.loadIsolateSources();
+  final logs = <String>[];
+  await testBuilder(
+    workersBuilder(BuilderOptions.empty),
+    {
+      'volley_workers_gen|lib/sample.dart':
+          "import 'dart:isolate';\n"
+          "import 'package:volley_workers/volley_workers.dart';\n"
+          "part 'sample.gen.dart';\n$body",
+    },
+    readerWriter: readerWriter,
+    onLog: (record) => logs.add(record.message),
+  );
+  return logs.join('\n');
+}
+
 void main() {
   test('generates actor, coroutine and message codecs', () async {
     late String generated;
@@ -87,24 +105,62 @@ final class Outer implements Message {
     expect(generated, contains('DateTime.fromMillisecondsSinceEpoch'));
   });
 
+  test('generates singleton registration and request', () async {
+    late String generated;
+    await _build(r'''
+import 'package:volley_workers/volley_workers.dart';
+part 'sample.gen.dart';
+
+@encodable
+final class Add implements Message {
+  final int amount;
+  const Add(this.amount);
+}
+
+@encodable
+final class Total implements Message {
+  final int value;
+  const Total(this.value);
+}
+
+@singleton
+final class Counter extends SerializedSingleton<Total, Add> {
+  @override
+  Total reduce(Add event) => Total(event.amount);
+}
+
+@coroutine
+Future<int> bump(int by) async => 0;
+''', (output) => generated = output);
+    expect(generated, contains('void registerCounter()'));
+    expect(generated, contains('Future<Total> requestCounter(Add message)'));
+    expect(generated, contains('build: Counter.new'));
+    // Spawn/launch functions register the singletons for the page.
+    expect(generated, contains('registerCounter();'));
+  });
+
   group('rejects', () {
-    Future<String> errors(String body) async {
-      final readerWriter = TestReaderWriter(rootPackage: 'volley_workers_gen');
-      await readerWriter.testing.loadIsolateSources();
-      final logs = <String>[];
-      await testBuilder(
-        workersBuilder(BuilderOptions.empty),
-        {
-          'volley_workers_gen|lib/sample.dart':
-              "import 'dart:isolate';\n"
-              "import 'package:volley_workers/volley_workers.dart';\n"
-              "part 'sample.gen.dart';\n$body",
-        },
-        readerWriter: readerWriter,
-        onLog: (record) => logs.add(record.message),
+    test('@singleton classes that are not Singletons', () async {
+      expect(
+        await errors('@singleton\nfinal class Plain {}'),
+        contains('must extend SerializedSingleton or ConcurrentSingleton'),
       );
-      return logs.join('\n');
-    }
+    });
+
+    test('@singleton classes with unsupported message types', () async {
+      expect(
+        await errors('''
+final class Bad implements Message {}
+
+@singleton
+final class S extends SerializedSingleton<Bad, Bad> {
+  @override
+  Bad reduce(Bad event) => event;
+}
+'''),
+        contains('cannot be sent to a worker'),
+      );
+    });
 
     test('actors whose parameter is not a Message', () async {
       expect(

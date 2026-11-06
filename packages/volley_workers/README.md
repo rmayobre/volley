@@ -54,6 +54,20 @@ JS-safe values. `@encodable` classes get generated codecs; coroutines
 accept primitives, lists, maps, typed data, enums, `DateTime`, `Duration`,
 `BigInt`, `RegExp` and message classes.
 
+## Singletons
+
+Annotate a `Singleton` subclass with `@singleton` to share it with workers. On
+the web the instance lives on the page and workers reach it by message
+passing; on the VM every isolate shares one instance.
+
+```dart
+@singleton
+final class Counter extends SerializedSingleton<Total, Add> { ... }
+
+@actor
+Future<Total> accumulate(Add add) => requestCounter(add);
+```
+
 See `example/` and `test/` (browser tests need the worker scripts compiled first
 and must be run from this directory: `dart test -p chrome test/web`).
 

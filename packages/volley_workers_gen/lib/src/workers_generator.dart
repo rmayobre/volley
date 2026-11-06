@@ -9,6 +9,10 @@ const _actorChecker = TypeChecker.typeNamedLiterally(
   'ActorWorker',
   inPackage: 'volley_workers',
 );
+const _singletonChecker = TypeChecker.typeNamedLiterally(
+  'SingletonWorker',
+  inPackage: 'volley_workers',
+);
 const _coroutineChecker = TypeChecker.typeNamedLiterally(
   'CoroutineWorker',
   inPackage: 'volley_workers',
@@ -18,6 +22,10 @@ const _coroutineChecker = TypeChecker.typeNamedLiterally(
 /// `@coroutine` functions as an isolate or a web worker, and the codecs for
 /// its `@encodable` classes.
 final class WorkersGenerator extends Generator {
+  /// Calls to every `register<Name>()` in the library being generated, run by
+  /// each spawn/launch function so workers can reach the page's singletons.
+  String _registrations = '';
+
   @override
   String? generate(LibraryReader library, BuildStep buildStep) {
     final out = <String>[];
@@ -25,6 +33,13 @@ final class WorkersGenerator extends Generator {
     for (final annotated in library.annotatedWith(encodableChecker)) {
       out.add(_message(annotated.element));
     }
+    final registrations = <String>[];
+    for (final annotated in library.annotatedWith(_singletonChecker)) {
+      final (code, register) = _singleton(annotated.element);
+      out.add(code);
+      registrations.add(register);
+    }
+    _registrations = registrations.map((r) => '  $r();\n').join();
     for (final annotated in library.annotatedWith(_actorChecker)) {
       out.add(_actor(annotated.element));
     }
@@ -111,6 +126,89 @@ $name ${prefix}FromMap(Map<String, Object?> map) => $name(
 ''';
   }
 
+  // --- @singleton -----------------------------------------------------------
+
+  (String, String) _singleton(Element element) {
+    if (element is! ClassElement) {
+      throw InvalidGenerationSourceError(
+        '@singleton can only annotate classes.',
+        element: element,
+      );
+    }
+    final name = element.name!;
+    if (element.isAbstract || element.typeParameters.isNotEmpty) {
+      throw InvalidGenerationSourceError(
+        '@singleton `$name` must be a concrete, non-generic class.',
+        element: element,
+      );
+    }
+    final constructor = element.unnamedConstructor;
+    if (constructor == null ||
+        constructor.formalParameters.any((p) => p.isRequired)) {
+      throw InvalidGenerationSourceError(
+        '@singleton `$name` needs an unnamed constructor without required '
+        'parameters, because the instance is built without arguments.',
+        element: element,
+      );
+    }
+    final base = element.allSupertypes.where(
+      (t) =>
+          t.element.name == 'Singleton' &&
+          t.element.library.uri.scheme == 'package' &&
+          t.element.library.uri.pathSegments.first == 'volley',
+    );
+    if (base.isEmpty) {
+      throw InvalidGenerationSourceError(
+        '@singleton `$name` must extend SerializedSingleton or '
+        'ConcurrentSingleton.',
+        element: element,
+      );
+    }
+    final input = base.first.typeArguments[1];
+    final output = base.first.typeArguments[0];
+    final codec = Codec();
+    final String decodeIn, encodeIn, decodeOut, encodeOut;
+    try {
+      decodeIn = codec.decode(input, 'wire');
+      encodeIn = codec.encode(input, 'message');
+      decodeOut = codec.decode(output, 'wire');
+      encodeOut = codec.encode(output, 'message');
+    } on UnsupportedWorkerType catch (e) {
+      throw InvalidGenerationSourceError(e.message, element: element);
+    }
+    final i = input.getDisplayString();
+    final o = output.getDisplayString();
+    final key = '${element.library.uri}#$name';
+    final register = 'register$name';
+    return (
+      '''
+/// Makes `$name` reachable from web workers. Called for you by the spawn and
+/// launch functions in this library; call it yourself on the page if a worker
+/// from another library uses this singleton.
+void $register() => registerSingleton<$o, $i, $name>(
+  key: '$key',
+  build: $name.new,
+  decodeIn: (Object? wire) => $decodeIn,
+  encodeOut: ($o message) => $encodeOut,
+);
+
+/// Sends [message] to `$name` and returns its reply. Works on the page, in a
+/// web worker (the page owns the instance) and on the VM.
+Future<$o> request$name($i message) {
+  $register();
+  return callSingleton<$o, $i, $name>(
+    key: '$key',
+    message: message,
+    build: $name.new,
+    encodeIn: ($i message) => $encodeIn,
+    decodeOut: (Object? wire) => $decodeOut,
+  );
+}
+''',
+      register,
+    );
+  }
+
   // --- @actor ---------------------------------------------------------------
 
   String _actor(Element element) {
@@ -156,12 +254,14 @@ $name ${prefix}FromMap(Map<String, Object?> map) => $name(
 /// Send `$i` on the channel; receive `$o`.
 Future<Actor<$o, $i>> spawn$upper({
   String workerScript = '$name.worker.js',
-}) => spawnActorWorker<$o, $i>(
-  reducer: $name,
-  workerScript: workerScript,
-  encodeInput: ($i message) => $encodeInput,
-  decodeOutput: (Map<String, Object?> map) => $decodeOutput,
-);
+}) {
+$_registrations  return spawnActorWorker<$o, $i>(
+    reducer: $name,
+    workerScript: workerScript,
+    encodeInput: ($i message) => $encodeInput,
+    decodeOutput: (Map<String, Object?> map) => $decodeOutput,
+  );
+}
 
 /// Web worker entrypoint for `$name`. Call it from the `main` of the worker
 /// you compile with `dart compile js`.
@@ -212,13 +312,14 @@ void ${name}WorkerMain() => runActorWorker<$o, $i>(
     return '''
 /// Runs `$name` as a coroutine: in an isolate on the VM, in a web worker on
 /// the web (compiled from an entrypoint that calls `${name}WorkerMain`).
-Coroutine<$r> launch$upper(${params.join(', ')}) =>
-    launchCoroutineWorker<$r>(
-      compute: () => $name(${callArgs.join(', ')}),
-      workerScript: workerScript,
-      args: [${encodedArgs.join(', ')}],
-      decodeResult: (Object? value) => $decodeResult,
-    );
+Coroutine<$r> launch$upper(${params.join(', ')}) {
+$_registrations  return launchCoroutineWorker<$r>(
+    compute: () => $name(${callArgs.join(', ')}),
+    workerScript: workerScript,
+    args: [${encodedArgs.join(', ')}],
+    decodeResult: (Object? value) => $decodeResult,
+  );
+}
 
 /// Web worker entrypoint for `$name`. Call it from the `main` of the worker
 /// you compile with `dart compile js`.

@@ -82,6 +82,24 @@ sealed class Singleton<I extends Message, O extends Message> {
     await Bootstrapper.initialize();
     return impl.singletonInstance<I, O, T>(build);
   }
+
+  /// Sends [message] to the singleton built by [build] and returns the reply
+  /// to *this* call.
+  ///
+  /// Unlike [instance]'s channel, whose `messages` stream carries every reply
+  /// to every listener, the reply here is matched to this request, so
+  /// concurrent callers (for example several web workers) cannot receive each
+  /// other's results. Errors thrown by [reduce] complete the returned future
+  /// with that error.
+  static Future<I> request<
+    I extends Message,
+    O extends Message,
+    T extends Singleton<I, O>
+  >(T Function() build, O message) async {
+    await Bootstrapper.initialize();
+    await impl.singletonInstance<I, O, T>(build);
+    return impl.singletonRequest<I, O, T>(message);
+  }
 }
 
 /// A [Singleton] that handles **one message at a time, in order**.
