@@ -62,6 +62,7 @@ import 'singleton_instance.dart' as impl;
 /// }
 /// ```
 sealed class Singleton<I extends Message, O extends Message> {
+  /// Subclasses are created by the `build` callback given to [instance].
   const Singleton();
 
   /// Handles one event sent by a caller ([O]) and produces the response ([I])
@@ -131,6 +132,7 @@ sealed class Singleton<I extends Message, O extends Message> {
 /// [ConcurrentSingleton] if that call-back pattern is needed.
 abstract class SerializedSingleton<I extends Message, O extends Message>
     extends Singleton<I, O> {
+  /// Creates a singleton that handles messages one at a time.
   const SerializedSingleton();
 }
 
@@ -150,5 +152,6 @@ abstract class SerializedSingleton<I extends Message, O extends Message>
 /// ```
 abstract class ConcurrentSingleton<I extends Message, O extends Message>
     extends Singleton<I, O> {
+  /// Creates a singleton that handles messages concurrently.
   const ConcurrentSingleton();
 }

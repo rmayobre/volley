@@ -14,6 +14,7 @@ final class WebStreamChannel<I extends Message, O extends Message>
   final _inbound = StreamController<I>.broadcast();
   bool _closed = false;
 
+  /// Creates a channel that passes everything sent on it to [onSend].
   WebStreamChannel({required void Function(O message) onSend})
     : _onSend = onSend;
 

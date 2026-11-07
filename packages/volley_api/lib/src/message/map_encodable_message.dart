@@ -10,9 +10,12 @@ import 'message.dart';
 /// message itself holds types that aren't ([RegExp], [BigInt], enums, or
 /// nested [MapEncodableMessage] types).
 ///
-/// Generated automatically for `@encodable`-annotated classes by
-/// `package:volley_workers_gen`, which also generates a matching top-level
-/// `fromMap` function per class to reverse the conversion.
+/// `@encodable` classes processed by `package:volley_workers_gen` do *not*
+/// implement this interface: the generator emits top-level `_$NameToMap` /
+/// `_$NameFromMap` functions instead. The generator also accepts fields whose
+/// type implements this interface, provided it has a `fromMap` factory or
+/// static method.
 abstract interface class MapEncodableMessage implements Message {
+  /// Encodes this message as a map of JS-interop-safe values.
   Map<String, Object?> toMap();
 }

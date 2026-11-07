@@ -3,6 +3,7 @@ import 'package:volley_api/volley_api.dart';
 import '../../coroutine/coroutine_message.dart' show CoroutineMessage;
 import '../../coroutine/coroutine_result.dart';
 
+/// Not supported on this platform: every member throws [UnimplementedError].
 final class Bootstrapper {
   static Channel<CoroutineResult, CoroutineMessage> get coroutineChannel =>
       throw UnimplementedError(

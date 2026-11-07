@@ -14,7 +14,14 @@ import '../../singleton/io/singleton_operation.dart';
 import '../../singleton/io/singleton_results.dart';
 import '../../singleton/io/singleton_send_port.dart';
 
+/// Starts and stops the infrastructure that actors, singletons and
+/// coroutines share: the singleton host isolate and the coroutine executor.
+///
+/// It is initialized automatically on first use, so calling [initialize] is
+/// optional. Call [shutdown] before the program ends, otherwise the host
+/// isolate keeps the process alive.
 final class Bootstrapper {
+  /// The channel used by `coroutine()` to reach the coroutine executor.
   static late Channel<CoroutineResult, CoroutineMessage> coroutineChannel;
 
   // A caller that's spawning a new isolate and wants it to share the

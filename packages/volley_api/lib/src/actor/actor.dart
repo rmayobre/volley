@@ -2,6 +2,14 @@ import '../channel/channel.dart';
 import '../message/message.dart';
 import '../disposable/disposable.dart';
 
+/// A unit of isolated, message-driven computation.
+///
+/// An actor owns private state and talks to the outside world only through its
+/// [channel]. On native platforms it runs in its own isolate; on the web it
+/// runs on the main thread (or in a Web Worker when created through
+/// `package:volley_workers`). Messages are processed one at a time.
+///
+/// Disposing an actor stops it and releases its resources.
 @pragma('vm:isolate-unsendable')
 abstract interface class Actor<I extends Message, O extends Message>
     implements Disposable {

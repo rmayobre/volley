@@ -1,21 +1,23 @@
-/// Marks a top-level function as an actor.
-///
-/// The function must take a single [Message] parameter and return that
-/// message type's response (`M`, `Future<M>` or `FutureOr<M>`) where the
-/// response is also a [Message]. `volley_workers_gen` generates `spawn<Name>`
-/// and `<name>WorkerMain` for it.
+/// Annotations read by `volley_workers_gen`: `@actor`, `@coroutine`,
+/// `@singleton` and `@encodable`.
 library;
 
-/// See [actor].
+/// The type of [actor]; use the constant, not this class.
 final class ActorWorker {
+  /// Creates the annotation.
   const ActorWorker();
 }
 
-/// Marks a top-level function as an actor worker.
+/// Marks a top-level function as an actor.
+///
+/// The function must take a single `Message` parameter and return a `Message`
+/// response (`M`, `Future<M>` or `FutureOr<M>`). `volley_workers_gen`
+/// generates `spawn<Name>` and `<name>WorkerMain` for it.
 const actor = ActorWorker();
 
-/// See [coroutine].
+/// The type of [coroutine]; use the constant, not this class.
 final class CoroutineWorker {
+  /// Creates the annotation.
   const CoroutineWorker();
 }
 
@@ -26,17 +28,19 @@ final class CoroutineWorker {
 /// generates `launch<Name>` and `<name>WorkerMain` for it.
 const coroutine = CoroutineWorker();
 
-/// Marks a class as a message: `volley_workers_gen` generates `toMap` /
-/// `fromMap` codecs for it so it can cross a web worker boundary.
+/// The type of [encodable]; use the constant, not this class.
 final class Encodable {
+  /// Creates the annotation.
   const Encodable();
 }
 
-/// Marks a class for `toMap` / `fromMap` generation.
+/// Marks a `Message` class so `volley_workers_gen` generates `_$NameToMap` /
+/// `_$NameFromMap` codecs for it, letting it cross a web worker boundary.
 const encodable = Encodable();
 
-/// See [singleton].
+/// The type of [singleton]; use the constant, not this class.
 final class SingletonWorker {
+  /// Creates the annotation.
   const SingletonWorker();
 }
 

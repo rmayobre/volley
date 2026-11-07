@@ -5,6 +5,10 @@ import 'package:volley_api/volley_api.dart';
 import 'coroutine_message.dart';
 import 'coroutine_result.dart';
 
+/// The [Coroutine] handle returned by `coroutine()`.
+///
+/// Completed by the listener in `coroutine()` when the executor reports a
+/// result; disposing it asks the executor to cancel the job.
 final class CoroutineImpl<R> implements Coroutine<R> {
   final Channel<CoroutineResult, CoroutineMessage> _channel;
   final String _jobId;
@@ -22,6 +26,7 @@ final class CoroutineImpl<R> implements Coroutine<R> {
     }
   }
 
+  /// Tracks the job [_jobId] that was sent over [_channel].
   CoroutineImpl(this._channel, this._jobId) {
     _live.add(this);
     _completer.future.then<void>(
@@ -42,12 +47,14 @@ final class CoroutineImpl<R> implements Coroutine<R> {
   @override
   Future<R> get result => _completer.future;
 
+  /// Completes [result] with [value]. Ignored once done or canceled.
   void complete(R value) {
     if (_isDone || _isCanceled) return;
     _isDone = true;
     _completer.complete(value);
   }
 
+  /// Fails [result]. Ignored once done or canceled.
   void completeError(Object error, [StackTrace? stackTrace]) {
     if (_isDone || _isCanceled) return;
     _isDone = true;
