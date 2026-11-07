@@ -4,6 +4,8 @@ import 'package:meta/meta.dart';
 import 'package:volley/volley.dart' show Singleton;
 import 'package:volley_api/volley_api.dart';
 
+/// Serves one worker request: takes the request in wire form, returns the
+/// reply in wire form.
 typedef SingletonHandler = Future<Object?> Function(Object? request);
 
 final _handlers = <String, SingletonHandler>{};

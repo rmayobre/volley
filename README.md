@@ -13,6 +13,10 @@ both: **actors**, **coroutines** and **singletons**.
 |---|---|
 | [`volley`](packages/volley) | The implementation: `actor()`, `coroutine()`, `Singleton`, `Bootstrapper`. |
 | [`volley_api`](packages/volley_api) | Platform-agnostic interfaces and utilities (`Channel`, `Actor`, `Disposable`, `Pool`, `MessageBus`, ...). Re-exported by `volley`. |
+| [`volley_workers`](packages/volley_workers) | Real Web Worker support: the same actors, coroutines and singletons run as isolates on the VM and as web workers in the browser. |
+| [`volley_workers_gen`](packages/volley_workers_gen) | The `build_runner` generator for `volley_workers`: turns `@actor`, `@coroutine`, `@encodable` and `@singleton` declarations into one `.gen.dart` part file. |
+
+How the worker packages fit together: [docs/architecture.md](docs/architecture.md).
 
 ## A quick look
 

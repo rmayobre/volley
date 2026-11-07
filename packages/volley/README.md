@@ -123,6 +123,19 @@ channel.messages.listen(print, onError: (Object e, StackTrace s) => log(e));
 Replies aren't tied to the message that caused them: every listener on a
 channel sees every reply and error for that singleton. If it fails to build, `Singleton.instance` throws.
 
+When you need the reply to one specific message (for example, several callers
+share a singleton), use `Singleton.request` instead. It sends one message and
+returns the reply to that call, in order for a `SerializedSingleton`:
+
+```dart
+final total = await Singleton.request<CounterState, CounterEvent, Counter>(
+  Counter.new,
+  Add(2),
+);
+```
+
+An error thrown by `reduce` completes the returned future with that error.
+
 Pick the flavour that matches how `reduce` uses `await`:
 
 | | `SerializedSingleton` | `ConcurrentSingleton` |
