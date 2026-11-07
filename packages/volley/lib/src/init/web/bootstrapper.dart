@@ -7,7 +7,10 @@ import '../../coroutine/coroutine_message.dart';
 import '../../coroutine/coroutine_result.dart';
 import '../../singleton/web/singleton_instance.dart';
 
+/// Sets up the in-process coroutine channel (the web has no isolates to
+/// host) and tears it down again with [shutdown].
 final class Bootstrapper {
+  /// The channel used by `coroutine()` to run work.
   static late Channel<CoroutineResult, CoroutineMessage> coroutineChannel;
 
   static Future<void>? _initialization;

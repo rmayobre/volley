@@ -7,6 +7,11 @@ import 'package:volley_api/volley_api.dart';
 import '../../init/io/bootstrapper.dart';
 import '../../singleton/io/singleton_send_port.dart';
 
+/// Entry point of every actor isolate.
+///
+/// Starts the message loop, bootstraps the isolate (so singletons and
+/// coroutines work inside the reducer) and finally sends its input port back
+/// through [IsolateEntrypointArgs.handshakeSendPort] to signal it is ready.
 @internal
 @pragma('vm:entry-point')
 void entrypoint(IsolateEntrypointArgs args) async {
@@ -48,11 +53,19 @@ void entrypoint(IsolateEntrypointArgs args) async {
   args.handshakeSendPort.send(inputPort.sendPort);
 }
 
+/// Everything an actor isolate needs, bundled into one sendable object.
 @internal
 final class IsolateEntrypointArgs<I extends Object, O extends Object> {
+  /// Handles each incoming [O] and produces the [I] that is sent back.
   final FutureOr<I> Function(O) reducer;
+
+  /// Where responses are sent (the caller's end of the channel).
   final SendPort sendPort;
+
+  /// Receives the isolate's input port once it has finished starting up.
   final SendPort handshakeSendPort;
+
+  /// The shared singleton host, or `null` if this isolate *is* that host.
   final SendPort? singletonSendPort;
 
   /// Whether messages are handled one at a time, in order. Only the shared
@@ -69,6 +82,8 @@ final class IsolateEntrypointArgs<I extends Object, O extends Object> {
     this.serialized = true,
   });
 
+  /// Runs [reducer] on [message], or returns `null` (no response) if the
+  /// message is not an [O].
   FutureOr<Object>? reduce(dynamic message) {
     if (message is! O) return null;
     return reducer(message);

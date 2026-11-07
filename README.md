@@ -13,8 +13,8 @@ both: **actors**, **coroutines** and **singletons**.
 |---|---|
 | [`volley`](packages/volley) | The implementation: `actor()`, `coroutine()`, `Singleton`, `Bootstrapper`. |
 | [`volley_api`](packages/volley_api) | Platform-agnostic interfaces and utilities (`Channel`, `Actor`, `Disposable`, `Pool`, `MessageBus`, ...). Re-exported by `volley`. |
-| [`volley_workers`](packages/volley_workers) | Real Web Worker support: the same actors, coroutines and singletons run as isolates on the VM and as web workers in the browser. |
-| [`volley_workers_gen`](packages/volley_workers_gen) | The `build_runner` generator for `volley_workers`: turns `@actor`, `@coroutine`, `@encodable` and `@singleton` declarations into one `.gen.dart` part file. |
+| [`volley_workers`](packages/volley_workers) | Annotations (`@actor`, `@coroutine`, `@singleton`, `@encodable`) and a runtime that runs the same code as an isolate on the VM or a Web Worker in the browser. |
+| [`volley_workers_gen`](packages/volley_workers_gen) | `build_runner` code generator for `volley_workers`. |
 
 How the worker packages fit together: [docs/architecture.md](docs/architecture.md).
 
@@ -68,8 +68,9 @@ error handling, ordering guarantees and shutdown.
 ## Platforms
 
 * **Native (VM):** real isolates.
-* **Web:** everything runs on the main thread. The same code works, but
-  nothing runs in parallel.
+* **Web:** `volley` runs everything on the main thread. The same code works,
+  but nothing runs in parallel. Use `volley_workers` to run actors and
+  coroutines in real Web Workers.
 
 ## Working in this repository
 
@@ -79,6 +80,7 @@ This is a Dart workspace. From the repository root:
 dart pub get
 dart analyze packages
 dart test packages/volley_api packages/volley   # VM + Chrome (see below)
+# volley_workers / volley_workers_gen: see their READMEs and docs/architecture.md
 ```
 
 Each package's `dart_test.yaml` runs tests on the VM and in Chrome. Tests in

@@ -3,17 +3,6 @@ import 'dart:typed_data';
 
 import 'hex.dart';
 
-/// Generates a UUID version 7 string.
-///
-/// UUIDv7 is a time-ordered UUID (RFC 9562). The first 48 bits encode the
-/// current Unix timestamp in milliseconds, making UUIDs naturally sortable.
-///
-/// Format: `xxxxxxxx-xxxx-7xxx-yxxx-xxxxxxxxxxxx`
-/// - bits  0–47  : Unix timestamp (ms)
-/// - bits 48–51  : version = 0x7
-/// - bits 52–63  : rand_a (12 random bits)
-/// - bits 64–65  : variant = 0b10
-/// - bits 66–127 : rand_b (62 random bits)
 /// Generates a UUID version 4 string.
 ///
 /// UUIDv4 is a randomly generated UUID (RFC 9562). All 122 non-fixed bits

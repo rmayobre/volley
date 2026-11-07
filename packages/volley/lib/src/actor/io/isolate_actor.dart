@@ -4,12 +4,6 @@ import 'dart:isolate';
 import 'package:meta/meta.dart';
 import 'package:volley_api/volley_api.dart';
 
-/// An [Actor] backed by a dedicated [Isolate].
-///
-/// Obtain an instance via the [actor] function.
-///
-/// If the isolate dies from an uncaught exception, the actor closes itself and
-/// [closed] completes with a [RemoteError] describing the failure.
 /// Converts what an isolate's `onError` port delivers (`[description,
 /// stackTrace]`) into a [RemoteError].
 @internal
@@ -18,6 +12,13 @@ Object isolateError(Object? message) =>
         ? RemoteError(message[0].toString(), message[1].toString())
         : message ?? StateError('actor isolate failed');
 
+/// An [Actor] backed by a dedicated [Isolate].
+///
+/// Obtain an instance via the `actor` function.
+///
+/// If the isolate dies from an uncaught exception, the actor closes itself and
+/// [closed] completes with a [RemoteError] describing the failure. Disposing
+/// kills the isolate immediately, dropping any queued messages.
 @internal
 final class IsolateActor<I extends Message, O extends Message>
     implements Actor<I, O> {

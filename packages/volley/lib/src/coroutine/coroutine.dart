@@ -9,6 +9,22 @@ import 'coroutine_result.dart';
 
 export 'coroutine_message.dart' show Computation;
 
+/// Runs [compute] concurrently and returns a handle to its outcome.
+///
+/// On native platforms the work runs in its own short-lived isolate (managed
+/// by a shared executor), so [compute] must be a top-level or static function,
+/// or a closure that captures only sendable values, and its result must be
+/// sendable. On the web it runs on the main thread.
+///
+/// [Coroutine.result] completes with the return value, or with the error
+/// [compute] threw. Disposing a running coroutine cancels it and fails
+/// `result` with a `CoroutineDisposedException`. Coroutines may start further
+/// coroutines.
+///
+/// ```dart
+/// final c = coroutine(() => heavyWork());
+/// print(await c.result);
+/// ```
 Coroutine<R> coroutine<R>(Computation<R> compute) {
   final channel = Bootstrapper.coroutineChannel;
   final job = CoroutineTask(compute);

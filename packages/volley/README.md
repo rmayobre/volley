@@ -64,9 +64,11 @@ mutable state can't be transferred across the isolate boundary.
 
 ### `coroutine<R>(compute)`
 
-A single, one-shot computation dispatched to a shared coroutine executor
-isolate (spawned once, reused for every call) rather than a fresh isolate
-per job:
+A single, one-shot computation. The request goes to a shared coroutine
+executor (a singleton in the shared host isolate, set up once) which runs each
+job in its own short-lived isolate, so jobs run in parallel and can be
+cancelled by disposing the `Coroutine`. On the web the computation runs on the
+main thread:
 
 ```dart
 final sum = await coroutine(() => _sumRange(0, 500000)).result;
@@ -188,9 +190,10 @@ live in `test/common/` (both platforms), `test/vm/` (needs `dart:isolate` or
   instead of closing over it. (On the web a closure works, since nothing is
   sent to another isolate, but code that must run on both shouldn't rely on
   it.)
-- **Prefer `coroutine()` over `actor()` for one-shot work.** `coroutine()`
-  reuses a shared executor isolate; spawning a fresh `actor()` per job pays
-  isolate-startup cost every time for no benefit once the work is done.
+- **Prefer `coroutine()` over `actor()` for one-shot work.** A coroutine
+  needs no handshake, is cancelled by `dispose()` and cleans up its isolate
+  when finished; an `actor()` is meant for long-lived state and must be
+  disposed by you.
 - **Dispose actors you spawn.** `Actor` implements `Disposable` — an
   undisposed `actor()` leaves its isolate running until you dispose it or the
   program exits. Watch `Actor.closed` to learn when, and why, an actor stopped.

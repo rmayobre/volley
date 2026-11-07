@@ -5,6 +5,8 @@ import '../disposable/disposable.dart';
 import 'pool.dart';
 import 'pool_disposed_exception.dart';
 
+/// The default [Pool]: creates resources lazily up to `size`, then queues
+/// callers FIFO until a resource is released.
 final class BasePool<T> implements Pool<T> {
   final Queue<T> _resources;
   final Queue<Completer<T>> _waiters;
@@ -13,6 +15,7 @@ final class BasePool<T> implements Pool<T> {
   int _created = 0;
   bool _disposed = false;
 
+  /// Creates a pool of at most [_size] resources built by [_factory].
   BasePool(this._size, this._factory)
     : _resources = Queue(),
       _waiters = Queue();
