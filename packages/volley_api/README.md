@@ -28,7 +28,10 @@ with these types indirectly, through `volley`'s exports.
   `Disposable.iterables(...)` to bundle several into one.
 - **`MessageBus`** / **`BaseMessageBus`** — pub/sub fan-out over a stream of
   `Message`s, for wiring multiple listeners to one channel.
-- **`Pool<T>`** / **`BasePool<T>`** — a fixed-size, lazily filled pool of reusable objects. `dispose()` fails waiting callers (and later calls) with `PoolDisposedException` and disposes `Disposable` resources, idle ones now and in-use ones when handed back.
+- **`Pool<T>`** / **`BasePool<T>`** — a fixed-size, lazily filled pool of
+  reusable objects. `dispose()` fails waiting callers (and later calls) with
+  `PoolDisposedException` and disposes `Disposable` resources, idle ones now
+  and in-use ones when handed back.
 
 ## Making a `Message` safe to send across a worker/isolate boundary
 
@@ -38,15 +41,16 @@ with these types indirectly, through `volley`'s exports.
   itself (`Map<String, Object?> toMap()`) using only types that `jsify()` /
   `dartify()` understand. An implementation that sends messages over a
   JS-interop boundary (such as real Web Workers) can use `toMap()` instead of
-  relying on `jsify()`'s undefined behavior for arbitrary custom classes. No
-  implementation in this repository does so yet; `regExpToMap`/`regExpFromMap`
-  and `bigIntToMap`/`bigIntFromMap` help encode the types `jsify()` can't.
+  relying on `jsify()`'s undefined behavior for arbitrary custom classes.
+  `regExpToMap`/`regExpFromMap` and `bigIntToMap`/`bigIntFromMap` help encode
+  the types `jsify()` can't. (`volley_workers` itself uses generated top-level
+  codecs for `@encodable` classes rather than this interface.)
 - **`UnsendableMessageException`** — thrown at runtime (for example by
   `volley`'s isolate channel) when a message fails to cross the boundary,
   instead of letting the raw platform error leak through.
 
-Code generators can target `Message`, `MapEncodableMessage` and
-`UnsendableMessageException`; none is bundled here.
+[`volley_workers_gen`](../volley_workers_gen) is a code generator that targets
+`Message` and `UnsendableMessageException`; no generator is bundled here.
 
 ## Best practices
 

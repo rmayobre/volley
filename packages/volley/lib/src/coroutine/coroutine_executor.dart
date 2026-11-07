@@ -9,8 +9,10 @@ import '../singleton/io/singleton_send_port.dart';
 import 'coroutine_message.dart';
 import 'coroutine_result.dart';
 
-// Concurrent on purpose: a running job may start nested coroutines, which
-// come back to this same singleton and must not wait for the outer job.
+/// The singleton that runs coroutine jobs, each in its own sub-isolate.
+///
+/// Concurrent on purpose: a running job may start nested coroutines, which
+/// come back to this same singleton and must not wait for the outer job.
 final class CoroutineExecutor
     extends ConcurrentSingleton<CoroutineResult, CoroutineMessage>
     implements Disposable {
@@ -29,6 +31,10 @@ final class CoroutineExecutor
     _pendingCancels.clear();
   }
 
+  /// Starts a job ([CoroutineTask]) or cancels one ([CoroutineDisposal]).
+  ///
+  /// A disposal that arrives before its task (or while the task's isolate is
+  /// still spawning) is remembered so the task is cancelled instead of run.
   @override
   Future<CoroutineResult<dynamic>> reduce(CoroutineMessage message) async {
     switch (message) {

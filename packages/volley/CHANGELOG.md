@@ -21,6 +21,9 @@
   `actor()` and `Singleton.instance()` call it for you.
   `Bootstrapper.shutdown()` stops the singleton host, kills unfinished
   coroutines and disposes `Disposable` singletons so a program can exit.
+- `Singleton.request`: send one message to a singleton and get the reply to
+  that call (unlike the shared channel, concurrent callers cannot receive each
+  other's replies). Used by `volley_workers`.
 - Tests run on the VM and in Chrome (`test/common`, `test/vm`, `test/web`).
 
 ## 0.0.1

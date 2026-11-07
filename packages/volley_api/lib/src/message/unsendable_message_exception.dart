@@ -14,6 +14,7 @@ final class UnsendableMessageException implements Exception {
   /// `SendPort.send`, or a JS interop error from `jsify()`/`postMessage`).
   final Object cause;
 
+  /// Creates the exception for a [messageType] that failed with [cause].
   const UnsendableMessageException(this.messageType, this.cause);
 
   @override
