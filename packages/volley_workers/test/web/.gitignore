@@ -1,0 +1,3 @@
+# Compiled worker scripts; see workers_web_test.dart.
+*.worker.js
+*.worker.js.*

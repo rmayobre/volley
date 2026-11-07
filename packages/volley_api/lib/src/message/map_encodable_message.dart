@@ -10,7 +10,7 @@ import 'message.dart';
 /// message itself holds types that aren't ([RegExp], [BigInt], enums, or
 /// nested [MapEncodableMessage] types).
 ///
-/// Generated automatically for `@volleyMessage`-annotated classes by
+/// Generated automatically for `@encodable`-annotated classes by
 /// `package:volley_workers_gen`, which also generates a matching top-level
 /// `fromMap` function per class to reverse the conversion.
 abstract interface class MapEncodableMessage implements Message {

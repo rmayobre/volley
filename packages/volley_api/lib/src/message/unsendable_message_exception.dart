@@ -1,7 +1,7 @@
 /// Thrown when a [Message] could not be sent because its runtime value is
 /// not safely cloneable across an isolate or web worker boundary.
 ///
-/// This is a runtime safety net: messages declared with `@volleyMessage`
+/// This is a runtime safety net: messages declared with `@encodable`
 /// (see `package:volley_workers_gen`) are already checked for this at build
 /// time, so this exception is expected to surface mainly for hand-written
 /// [Message] classes that skip that check, or for fields whose static type
@@ -20,6 +20,6 @@ final class UnsendableMessageException implements Exception {
   String toString() =>
       'UnsendableMessageException: a $messageType could not be sent — its '
       'runtime value is not safely cloneable on this platform. If it was '
-      'declared with @volleyMessage, run `dart run build_runner build` to '
+      'declared with @encodable, run `dart run build_runner build` to '
       'catch this at build time instead.\nUnderlying error: $cause';
 }

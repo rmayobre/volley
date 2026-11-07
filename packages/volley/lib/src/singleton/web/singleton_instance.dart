@@ -37,6 +37,15 @@ Future<Channel<I, O>> singletonInstance<
   return channel;
 }
 
+Future<I> singletonRequest<
+  I extends Message,
+  O extends Message,
+  T extends Singleton<I, O>
+>(O message) {
+  final channel = _channels[T] as _WebSingletonChannel<I, O>;
+  return channel.request(message);
+}
+
 final class _WebSingletonChannel<I extends Message, O extends Message>
     implements Channel<I, O> {
   final Singleton<I, O> _singleton;
@@ -56,6 +65,17 @@ final class _WebSingletonChannel<I extends Message, O extends Message>
     } catch (e, st) {
       _controller.addError(e, st);
     }
+  }
+
+  /// Runs [message] through the singleton, honouring serialization, and
+  /// returns its own result.
+  Future<I> request(O message) {
+    if (_singleton is SerializedSingleton) {
+      final result = _queue.then<I>((_) => _singleton.reduce(message));
+      _queue = result.then<void>((_) {}, onError: (Object _) {});
+      return result;
+    }
+    return Future<I>.microtask(() => _singleton.reduce(message));
   }
 
   @override

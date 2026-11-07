@@ -1,0 +1,232 @@
+import 'package:build/build.dart';
+import 'package:build_test/build_test.dart';
+import 'package:test/test.dart';
+import 'package:volley_workers_gen/builder.dart';
+
+const _source = r'''
+import 'package:volley_workers/volley_workers.dart';
+
+part 'sample.gen.dart';
+
+@encodable
+final class Ping implements Message {
+  final String text;
+  final List<int> numbers;
+  final DateTime? at;
+  const Ping(this.text, {required this.numbers, this.at});
+}
+
+@encodable
+final class Pong implements Message {
+  final String text;
+  const Pong(this.text);
+}
+
+@actor
+Future<Pong> echo(Ping ping) async => Pong(ping.text);
+
+@coroutine
+Future<int> sum(List<int> values, String label) async => 0;
+''';
+
+Future<void> _build(String source, void Function(String) check) async {
+  final readerWriter = TestReaderWriter(rootPackage: 'volley_workers_gen');
+  await readerWriter.testing.loadIsolateSources();
+  await testBuilder(
+    workersBuilder(BuilderOptions.empty),
+    {'volley_workers_gen|lib/sample.dart': source},
+    readerWriter: readerWriter,
+    outputs: {
+      'volley_workers_gen|lib/sample.gen.dart': decodedMatches(
+        predicate<String>((output) {
+          check(output);
+          return true;
+        }),
+      ),
+    },
+  );
+}
+
+Future<String> errors(String body) async {
+  final readerWriter = TestReaderWriter(rootPackage: 'volley_workers_gen');
+  await readerWriter.testing.loadIsolateSources();
+  final logs = <String>[];
+  await testBuilder(
+    workersBuilder(BuilderOptions.empty),
+    {
+      'volley_workers_gen|lib/sample.dart':
+          "import 'dart:isolate';\n"
+          "import 'package:volley_workers/volley_workers.dart';\n"
+          "part 'sample.gen.dart';\n$body",
+    },
+    readerWriter: readerWriter,
+    onLog: (record) => logs.add(record.message),
+  );
+  return logs.join('\n');
+}
+
+void main() {
+  test('generates actor, coroutine and message codecs', () async {
+    late String generated;
+    await _build(_source, (output) => generated = output);
+    expect(generated, contains('part of'));
+    expect(generated, contains('Future<Actor<Pong, Ping>> spawnEcho('));
+    expect(generated, contains('void echoWorkerMain()'));
+    expect(generated, contains('Coroutine<int> launchSum('));
+    expect(generated, contains('void sumWorkerMain()'));
+    expect(generated, contains(r'_$PingToMap'));
+    expect(generated, contains(r'_$PongFromMap'));
+  });
+
+  test('supports enums, DateTime, nesting and nullable lists', () async {
+    late String generated;
+    await _build(r'''
+import 'package:volley_workers/volley_workers.dart';
+part 'sample.gen.dart';
+
+enum Color { red, green }
+
+@encodable
+final class Inner implements Message {
+  final Color color;
+  const Inner(this.color);
+}
+
+@encodable
+final class Outer implements Message {
+  final Inner inner;
+  final DateTime when;
+  final List<int>? items;
+  const Outer(this.inner, this.when, this.items);
+}
+''', (output) => generated = output);
+    expect(generated, contains('Color.values.byName'));
+    expect(generated, contains('_\$InnerToMap(value.inner)'));
+    expect(generated, contains('DateTime.fromMillisecondsSinceEpoch'));
+  });
+
+  test('generates singleton registration and request', () async {
+    late String generated;
+    await _build(r'''
+import 'package:volley_workers/volley_workers.dart';
+part 'sample.gen.dart';
+
+@encodable
+final class Add implements Message {
+  final int amount;
+  const Add(this.amount);
+}
+
+@encodable
+final class Total implements Message {
+  final int value;
+  const Total(this.value);
+}
+
+@singleton
+final class Counter extends SerializedSingleton<Total, Add> {
+  @override
+  Total reduce(Add event) => Total(event.amount);
+}
+
+@coroutine
+Future<int> bump(int by) async => 0;
+''', (output) => generated = output);
+    expect(generated, contains('void registerCounter()'));
+    expect(generated, contains('Future<Total> requestCounter(Add message)'));
+    expect(generated, contains('build: Counter.new'));
+    // Spawn/launch functions register the singletons for the page.
+    expect(generated, contains('registerCounter();'));
+  });
+
+  group('rejects', () {
+    test('@singleton classes that are not Singletons', () async {
+      expect(
+        await errors('@singleton\nfinal class Plain {}'),
+        contains('must extend SerializedSingleton or ConcurrentSingleton'),
+      );
+    });
+
+    test('@singleton classes with unsupported message types', () async {
+      expect(
+        await errors('''
+final class Bad implements Message {}
+
+@singleton
+final class S extends SerializedSingleton<Bad, Bad> {
+  @override
+  Bad reduce(Bad event) => event;
+}
+'''),
+        contains('cannot be sent to a worker'),
+      );
+    });
+
+    test('actors whose parameter is not a Message', () async {
+      expect(
+        await errors('@actor\nFuture<int> bad(int x) async => x;'),
+        contains('@actor functions must take a Message'),
+      );
+    });
+
+    test('coroutine parameters that cannot cross a worker boundary', () async {
+      final log = await errors('@coroutine\nint bad(SendPort port) => 0;\n');
+      expect(log, contains('cannot be sent to a worker'));
+      expect(log, contains('SendPort'));
+    });
+
+    test('coroutine parameters of an unannotated class', () async {
+      final log = await errors(
+        'class Plain {}\n@coroutine\nint bad(Plain p) => 0;\n',
+      );
+      expect(log, contains('cannot be sent to a worker'));
+    });
+
+    test('maps with non-String keys', () async {
+      expect(
+        await errors('@coroutine\nint bad(Map<int, int> m) => 0;'),
+        contains('only maps with String keys'),
+      );
+    });
+
+    test('coroutines with named or optional parameters', () async {
+      expect(
+        await errors('@coroutine\nint bad({int x = 0}) => x;'),
+        contains('required positional parameters'),
+      );
+    });
+
+    test('@encodable classes that are not Messages', () async {
+      expect(
+        await errors('@encodable\nfinal class Plain {\n  const Plain();\n}'),
+        contains('must implement Message'),
+      );
+    });
+
+    test('message properties of unsupported types', () async {
+      expect(
+        await errors('''
+@encodable
+final class Bad implements Message {
+  final void Function() callback;
+  const Bad(this.callback);
+}
+'''),
+        contains('cannot be sent to a worker'),
+      );
+    });
+
+    test('message constructor parameters without a matching field', () async {
+      expect(
+        await errors('''
+@encodable
+final class Bad implements Message {
+  final String other;
+  Bad(String text) : other = text;
+}
+'''),
+        contains('no matching field or getter named `text`'),
+      );
+    });
+  });
+}
