@@ -18,6 +18,16 @@ both: **actors**, **coroutines** and **singletons**.
 
 How the worker packages fit together: [docs/architecture.md](docs/architecture.md).
 
+## Examples
+
+| Example | What it shows |
+|---|---|
+| [`examples/cli_wordcount`](examples/cli_wordcount) | A command line program using `volley` only: coroutines, an actor and a singleton on isolates. |
+| [`examples/flutter_workers`](examples/flutter_workers) | A Flutter app using `volley_workers`: the same worker code runs as web workers on the web and as isolates elsewhere. |
+
+Both are standalone packages (outside the repository's pub workspace) that use
+path dependencies.
+
 ## A quick look
 
 ```dart
