@@ -1,7 +1,12 @@
 name: volley_api
-description: Interface APIs for the volley concurrency framework.
+description: "Interfaces and utilities for the volley concurrency framework: Actor, Channel, Coroutine, Disposable, Pool and MessageBus. No platform imports."
 version: 0.1.0
-repository: https://github.com/rmayobre/volley-api
+repository: https://github.com/rmayobre/volley/tree/main/packages/volley_api
+issue_tracker: https://github.com/rmayobre/volley/issues
+topics:
+  - concurrency
+  - actors
+  - isolates
 resolution: workspace
 
 environment:

@@ -1,7 +1,7 @@
 import 'package:build/build.dart';
 import 'package:build_test/build_test.dart';
 import 'package:test/test.dart';
-import 'package:volley_workers_gen/builder.dart';
+import 'package:volley_workers_gen/volley_workers_gen.dart';
 
 const _source = r'''
 import 'package:volley_workers/volley_workers.dart';

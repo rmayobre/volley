@@ -1,8 +1,13 @@
 name: volley_workers
-description: Web Worker and isolate backed actors and coroutines for volley, used with volley_workers_gen.
+description: "Run volley actors, coroutines and singletons as isolates on the VM or Web Workers in the browser. Use with volley_workers_gen."
 version: 0.1.0
-repository: https://github.com/rmayobre/volley-api
-publish_to: none
+repository: https://github.com/rmayobre/volley/tree/main/packages/volley_workers
+issue_tracker: https://github.com/rmayobre/volley/issues
+topics:
+  - concurrency
+  - web-workers
+  - isolates
+  - actors
 resolution: workspace
 
 environment:
@@ -10,8 +15,8 @@ environment:
 
 dependencies:
   meta: ^1.17.0
-  volley:
-  volley_api:
+  volley: ^0.1.0
+  volley_api: ^0.1.0
   web: ^1.1.0
 
 dev_dependencies:
