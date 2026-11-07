@@ -1,0 +1,36 @@
+name: flutter_workers
+description: "Flutter example for volley_workers: the same code runs on isolates and as web workers."
+publish_to: none
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.7.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  volley_workers:
+    path: ../../packages/volley_workers
+
+# The volley packages resolve each other through the repository's pub
+# workspace; outside it they are plain path dependencies.
+dependency_overrides:
+  volley:
+    path: ../../packages/volley
+  volley_api:
+    path: ../../packages/volley_api
+  volley_workers:
+    path: ../../packages/volley_workers
+  volley_workers_gen:
+    path: ../../packages/volley_workers_gen
+
+dev_dependencies:
+  build_runner: ^2.10.0
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+  volley_workers_gen:
+    path: ../../packages/volley_workers_gen
+
+flutter:
+  uses-material-design: true

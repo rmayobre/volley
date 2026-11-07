@@ -26,6 +26,9 @@ final class WorkersGenerator extends Generator {
   /// each spawn/launch function so workers can reach the page's singletons.
   String _registrations = '';
 
+  /// Returns the body of `<source>.gen.dart` for [library], or `null` when it
+  /// has nothing annotated. Singletons are generated first so the spawn and
+  /// launch functions can register them.
   @override
   String? generate(LibraryReader library, BuildStep buildStep) {
     final out = <String>[];
@@ -58,6 +61,8 @@ final class WorkersGenerator extends Generator {
 
   // --- @encodable ------------------------------------------------------
 
+  /// Codecs for an `@encodable` class: `_$NameToMap` and `_$NameFromMap`,
+  /// built from the unnamed constructor's parameters.
   String _message(Element element) {
     if (element is! ClassElement) {
       throw InvalidGenerationSourceError(
@@ -128,6 +133,8 @@ $name ${prefix}FromMap(Map<String, Object?> map) => $name(
 
   // --- @singleton -----------------------------------------------------------
 
+  /// For a `@singleton` class: the `register<Name>` / `request<Name>` code and
+  /// the name of the register function.
   (String, String) _singleton(Element element) {
     if (element is! ClassElement) {
       throw InvalidGenerationSourceError(
@@ -211,6 +218,7 @@ Future<$o> request$name($i message) {
 
   // --- @actor ---------------------------------------------------------------
 
+  /// `spawn<Name>` and `<name>WorkerMain` for an `@actor` function.
   String _actor(Element element) {
     final function = _topLevelFunction(element, '@actor');
     final name = function.name!;
@@ -275,6 +283,7 @@ void ${name}WorkerMain() => runActorWorker<$o, $i>(
 
   // --- @coroutine -----------------------------------------------------------
 
+  /// `launch<Name>` and `<name>WorkerMain` for a `@coroutine` function.
   String _coroutine(Element element) {
     final function = _topLevelFunction(element, '@coroutine');
     final name = function.name!;
@@ -332,6 +341,8 @@ void ${name}WorkerMain() => runCoroutineWorker<$r>(
 
   // --- helpers --------------------------------------------------------------
 
+  /// [element] as a non-generic top-level function, or an
+  /// [InvalidGenerationSourceError] naming [annotation].
   ExecutableElement _topLevelFunction(Element element, String annotation) {
     if (element is! TopLevelFunctionElement) {
       throw InvalidGenerationSourceError(
@@ -349,6 +360,7 @@ void ${name}WorkerMain() => runCoroutineWorker<$r>(
   }
 
   /// `Future<T>` / `FutureOr<T>` -> `T`; anything else is returned as-is.
+  /// A function's value type: `Future<T>` / `FutureOr<T>` -> `T`.
   DartType _unwrap(DartType type) {
     if (type is InterfaceType &&
         (type.isDartAsyncFuture || type.isDartAsyncFutureOr)) {

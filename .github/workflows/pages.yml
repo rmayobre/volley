@@ -1,0 +1,67 @@
+# Publishes examples/flutter_workers to GitHub Pages.
+#
+# One-time setup: in the repository settings, set Pages > Build and deployment
+# > Source to "GitHub Actions".
+name: Deploy Flutter example to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/flutter_workers/**"
+      - "packages/**"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One deployment at a time; let a running one finish rather than cancel it.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: examples/flutter_workers
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - run: flutter pub get
+
+      # Generates lib/workers.gen.dart and compiles the web workers into web/.
+      - run: tool/build_workers.sh
+
+      # The site lives at https://<owner>.github.io/<repo>/, so it needs that
+      # base path. The web workers are loaded relative to it. CanvasKit is
+      # bundled instead of fetched from a CDN.
+      - run: >
+          flutter build web --release
+          --base-href "/${{ github.event.repository.name }}/"
+          --no-web-resources-cdn
+
+      - uses: actions/configure-pages@v5
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: examples/flutter_workers/build/web
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

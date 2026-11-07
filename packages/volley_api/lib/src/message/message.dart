@@ -7,5 +7,4 @@ import 'package:meta/meta.dart';
 /// other messages, but not closures, sockets or ports. Violations surface as
 /// an `UnsendableMessageException`.
 @immutable
-abstract interface class Message {
-}
+abstract interface class Message {}

@@ -1,0 +1,21 @@
+name: cli_wordcount
+description: "Command line example for volley (no web workers): counts words in files in parallel."
+publish_to: none
+
+environment:
+  sdk: "^3.7.0"
+
+dependencies:
+  volley:
+    path: ../../packages/volley
+
+# volley and volley_api resolve each other through the repository's pub
+# workspace; outside it they are plain path dependencies.
+dependency_overrides:
+  volley:
+    path: ../../packages/volley
+  volley_api:
+    path: ../../packages/volley_api
+
+dev_dependencies:
+  lints: ^6.1.0

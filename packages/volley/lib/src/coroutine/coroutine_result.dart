@@ -8,6 +8,7 @@ import 'package:volley_api/volley_api.dart';
 final class CoroutineResult<R> implements DistinctMessage {
   @override
   final String id;
+
   /// The computed value, when the job succeeded.
   final R? value;
 

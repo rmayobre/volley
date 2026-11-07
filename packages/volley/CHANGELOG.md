@@ -1,5 +1,9 @@
 ## 0.1.0
 
+- `Singleton.request<I, O, T>(build, message)`: sends one message to a
+  singleton and returns the reply to that call. Unlike the channel from
+  `Singleton.instance`, concurrent callers cannot receive each other's replies.
+
 - `actor<I, O>(reducer)`: an isolate-backed actor on native platforms, a
   main-thread actor on the web. Messages are handled one at a time, in order.
   A reducer that throws closes the actor: `Actor.closed` completes with the

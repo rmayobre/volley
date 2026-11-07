@@ -3,16 +3,19 @@ import 'package:analyzer/dart/element/nullability_suffix.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:source_gen/source_gen.dart';
 
+/// Matches classes annotated with `@encodable` from `volley_workers`.
 const encodableChecker = TypeChecker.typeNamedLiterally(
   'Encodable',
   inPackage: 'volley_workers',
 );
 
+/// Matches `MapEncodableMessage` implementations from `volley_api`.
 const mapEncodableChecker = TypeChecker.typeNamedLiterally(
   'MapEncodableMessage',
   inPackage: 'volley_api',
 );
 
+/// Matches `Message` implementations from `volley_api`.
 const messageChecker = TypeChecker.typeNamedLiterally(
   'Message',
   inPackage: 'volley_api',
@@ -20,12 +23,17 @@ const messageChecker = TypeChecker.typeNamedLiterally(
 
 /// Thrown for types the generator cannot send to a worker.
 final class UnsupportedWorkerType implements Exception {
+  /// Why the type cannot be sent, suitable for a build error.
   final String message;
+
+  /// Creates the exception with [message].
   UnsupportedWorkerType(this.message);
   @override
   String toString() => message;
 }
 
+/// Name prefix of the generated codec functions for [className]:
+/// `_$ClassName` (followed by `ToMap` / `FromMap`).
 String generatedName(String className) => '_\$$className';
 
 /// Builds the Dart expressions that convert values of [type] to and from the
@@ -55,11 +63,16 @@ final class Codec {
     return _decodeNonNull(type, expr);
   }
 
+  /// A fresh variable name, so nested lambdas in one expression do not shadow
+  /// each other.
   String _next() => 'v${_depth++}';
 
+  /// Typed data (`Uint8List` and friends) is transferred as-is.
   bool _isTypedData(InterfaceType type) =>
       type.element.library.uri.toString() == 'dart:typed_data';
 
+  /// [encode] for a non-nullable [type]; throws [UnsupportedWorkerType] for
+  /// types with no wire form.
   String _encodeNonNull(DartType type, String expr) {
     if (type is VoidType) return 'null';
     if (type is DynamicType || type.isDartCoreObject) return expr;
@@ -110,8 +123,10 @@ final class Codec {
     );
   }
 
+  /// Encodes a collection element or map value held in variable [v].
   String _encodeAt(DartType type, String v) => encode(type, v);
 
+  /// [decode] for a non-nullable [type]; the inverse of [_encodeNonNull].
   String _decodeNonNull(DartType type, String expr) {
     if (type is VoidType) return 'null';
     if (type is DynamicType) return expr;

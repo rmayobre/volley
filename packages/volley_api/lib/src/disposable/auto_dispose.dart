@@ -4,6 +4,7 @@ import 'disposable.dart';
 
 /// A block of work, sync or async, yielding [R].
 typedef Procedure<R> = FutureOr<R> Function();
+
 /// A block of work that is handed the resource it should use.
 typedef Usage<T, R> = FutureOr<R> Function(Disposable);
 

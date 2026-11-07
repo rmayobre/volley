@@ -18,14 +18,19 @@ import '../singleton_registry.dart';
 //   worker -> host  {t: 'sreq', k: <key>, id, d}      singleton request
 //   host   -> worker {t: 'sres', id, d} | {t: 'serr', id, e}   its reply
 
+/// Converts an envelope to the JS object posted between page and worker.
 JSAny? _pack(Map<String, Object?> envelope) => envelope.jsify();
 
+/// Converts a received JS object back to an envelope.
 Map<String, Object?> _unpack(JSAny? data) =>
     (data.dartify() as Map).cast<String, Object?>();
 
+/// Casts a decoded nested value to a string-keyed map.
 Map<String, Object?> _asMap(Object? value) =>
     (value as Map).cast<String, Object?>();
 
+/// Page side of a worker's singleton request: runs the registered handler and
+/// posts `sres`, or `serr` with the error text, back to [worker].
 Future<void> _serveSingleton(
   web.Worker worker,
   Map<String, Object?> request,
@@ -47,6 +52,7 @@ Future<void> _serveSingleton(
   }
 }
 
+/// A [StateError] describing a worker `error` event.
 Object _toError(web.Event event) {
   final message =
       event.isA<web.ErrorEvent>()
@@ -55,6 +61,8 @@ Object _toError(web.Event event) {
   return StateError('Worker failed: $message');
 }
 
+/// The page's end of an actor's channel: [send] posts to the worker and
+/// [emit] delivers the worker's replies on [messages].
 final class _WebWorkerChannel<I extends Message, O extends Message>
     implements Channel<I, O> {
   final void Function(O) _onSend;
@@ -82,6 +90,8 @@ final class _WebWorkerChannel<I extends Message, O extends Message>
   }
 }
 
+/// An [Actor] backed by a `Worker`: one message at a time, closed by
+/// [dispose] (terminates the worker) or by a worker error.
 final class _WebWorkerActor<I extends Message, O extends Message>
     implements Actor<I, O> {
   final web.Worker _worker;
@@ -135,8 +145,16 @@ final class _WebWorkerActor<I extends Message, O extends Message>
   Future<void> dispose() => _close(null);
 }
 
-/// Starts the web worker compiled at [workerScript] and returns an [Actor]
-/// that talks to it. Completes once the worker reports it is ready.
+/// Starts an actor for the generated `spawn<Name>` function.
+///
+/// * [reducer]: the annotated `@actor` function.
+/// * [workerScript]: URL of the compiled web worker script. Web only; the VM
+///   ignores it.
+/// * [encodeInput] / [decodeOutput]: convert messages to and from the
+///   JS-safe wire form. Web only; the VM sends messages as-is.
+///
+/// On the VM this is an isolate actor (see `volley`'s `actor`). On the web it
+/// starts a `Worker` and completes once the worker reports it is ready.
 Future<Actor<I, O>> spawnActorWorker<I extends Message, O extends Message>({
   required FutureOr<I> Function(O) reducer,
   required String workerScript,
@@ -164,6 +182,8 @@ Future<Actor<I, O>> spawnActorWorker<I extends Message, O extends Message>({
   return _WebWorkerActor<I, O>(worker, encodeInput, decodeOutput);
 }
 
+/// A [Coroutine] backed by a `Worker`: sends the arguments once the worker is
+/// ready and completes `result` from its reply; [dispose] terminates it.
 final class _WebWorkerCoroutine<R> implements Coroutine<R> {
   final web.Worker _worker;
   final _result = Completer<R>();
@@ -236,7 +256,16 @@ final class _WebWorkerCoroutine<R> implements Coroutine<R> {
   }
 }
 
-/// Runs the coroutine in the web worker compiled at [workerScript].
+/// Starts a coroutine for the generated `launch<Name>` function.
+///
+/// * [compute]: runs the annotated `@coroutine` function with its arguments.
+///   Used on the VM, where it runs in a `volley` coroutine isolate.
+/// * [workerScript]: URL of the compiled web worker script. Web only.
+/// * [args] / [decodeResult]: the arguments in wire form and the converter
+///   for the result. Web only.
+///
+/// On the web, disposing the returned coroutine terminates the worker and
+/// fails `result` with `CoroutineDisposedException`.
 Coroutine<R> launchCoroutineWorker<R>({
   required FutureOr<R> Function() compute,
   required String workerScript,
@@ -263,9 +292,17 @@ bool _handleSingletonReply(Map<String, Object?> envelope) {
 
 bool get _inWorker => globalContext.has('importScripts');
 
-/// Sends [message] to the singleton registered under [key] and returns its
-/// reply. On the page this calls the singleton directly; inside a worker it
-/// asks the page, which owns the instance.
+/// Sends [message] to the singleton [key] and returns the reply to that call.
+///
+/// Backs the generated `request<Name>` function.
+///
+/// * [build]: constructs the singleton the first time it is needed.
+/// * [encodeIn] / [decodeOut]: convert to and from the wire form. Used only
+///   when the call runs inside a web worker.
+///
+/// On the VM and on a web page this calls the singleton directly. Inside a web
+/// worker it asks the page, which owns the instance, and fails if the page has
+/// no singleton registered under [key].
 Future<I>
 callSingleton<I extends Message, O extends Message, T extends Singleton<I, O>>({
   required String key,
@@ -292,7 +329,12 @@ callSingleton<I extends Message, O extends Message, T extends Singleton<I, O>>({
 web.DedicatedWorkerGlobalScope get _scope =>
     globalContext as web.DedicatedWorkerGlobalScope;
 
-/// Worker side of an actor: call this from the worker's `main`.
+/// Worker side of an actor: call it (through the generated
+/// `<name>WorkerMain`) from the web worker's `main`.
+///
+/// Decodes each incoming message with [decodeInput], runs [reducer], and
+/// posts [encodeOutput] of the result back, one message at a time in order.
+/// Web only; throws `UnsupportedError` elsewhere.
 void runActorWorker<I extends Message, O extends Message>({
   required FutureOr<I> Function(O) reducer,
   required O Function(Map<String, Object?>) decodeInput,
@@ -319,7 +361,12 @@ void runActorWorker<I extends Message, O extends Message>({
   _scope.postMessage(_pack({'t': 'ready'}));
 }
 
-/// Worker side of a coroutine: call this from the worker's `main`.
+/// Worker side of a coroutine: call it (through the generated
+/// `<name>WorkerMain`) from the web worker's `main`.
+///
+/// Waits for the start message, runs [run] with the decoded arguments, and
+/// posts [encodeResult] of the value, or the error as text. Web only; throws
+/// `UnsupportedError` elsewhere.
 void runCoroutineWorker<R>({
   required FutureOr<R> Function(List<Object?> args) run,
   required Object? Function(R) encodeResult,
