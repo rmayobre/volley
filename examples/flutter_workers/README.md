@@ -30,6 +30,18 @@ downloading it, which helps offline or behind a proxy.
 On mobile and desktop you only need the generator step
 (`dart run build_runner build`); there are no worker scripts to compile.
 
+## Publish to GitHub Pages
+
+`.github/workflows/pages.yml` builds the app and deploys it on every push to
+`main` that touches the example or the packages (or when run by hand). In the
+repository settings, set **Pages > Build and deployment > Source** to
+**GitHub Actions** once.
+
+The workflow runs the same steps as above, then
+`flutter build web --base-href "/<repo>/" --no-web-resources-cdn`. The base
+path matters because the site is served from `https://<owner>.github.io/<repo>/`;
+the generated worker URLs are relative to it, so they resolve correctly.
+
 ## How the pieces fit
 
 | File | Role |
