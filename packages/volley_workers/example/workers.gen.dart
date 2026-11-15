@@ -49,7 +49,7 @@ Total _$TotalFromMap(Map<String, Object?> map) => Total((map['value'] as int));
 /// launch functions in this library; call it yourself on the page if a worker
 /// from another library uses this singleton.
 void registerCounter() => registerSingleton<Total, Add, Counter>(
-  key: 'package:volley_workers_gen/sample.dart#Counter',
+  key: 'package:volley_workers/example/workers.dart#Counter',
   build: Counter.new,
   decodeIn: (Object? wire) => _$AddFromMap(_$volleyAsMap(wire)),
   encodeOut: (Total message) => _$TotalToMap(message),
@@ -60,7 +60,7 @@ void registerCounter() => registerSingleton<Total, Add, Counter>(
 Future<Total> requestCounter(Add message) {
   registerCounter();
   return callSingleton<Total, Add, Counter>(
-    key: 'package:volley_workers_gen/sample.dart#Counter',
+    key: 'package:volley_workers/example/workers.dart#Counter',
     message: message,
     build: Counter.new,
     encodeIn: (Add message) => _$AddToMap(message),
@@ -69,22 +69,26 @@ Future<Total> requestCounter(Add message) {
 }
 
 /// Starts `echo` as an actor: an isolate on the VM, a web worker on the web
-/// (compiled from an entrypoint that calls `echoWorkerMain`).
+/// (run by the generated entrypoint, which `dart compile js` turns into
+/// `workerScript`).
 ///
 /// Send `Ping` on the channel; receive `Pong`.
-Future<Actor<Pong, Ping>> spawnEcho({String workerScript = 'echo.worker.js'}) {
+Future<Actor<Pong, Ping>> spawnEcho({
+  String workerScript = 'workers.worker.js',
+}) {
   registerCounter();
   return spawnActorWorker<Pong, Ping>(
     reducer: echo,
     workerScript: workerScript,
+    workerName: 'echo',
     encodeInput: (Ping message) => _$PingToMap(message),
     decodeOutput:
         (Map<String, Object?> map) => _$PongFromMap(_$volleyAsMap(map)),
   );
 }
 
-/// Web worker entrypoint for `echo`. Call it from the `main` of the worker
-/// you compile with `dart compile js`.
+/// Web worker entrypoint for `echo`. The generated `*.worker.dart` calls it
+/// for you.
 void echoWorkerMain() => runActorWorker<Pong, Ping>(
   reducer: echo,
   decodeInput: (Map<String, Object?> map) => _$PingFromMap(_$volleyAsMap(map)),
@@ -92,24 +96,26 @@ void echoWorkerMain() => runActorWorker<Pong, Ping>(
 );
 
 /// Starts `accumulate` as an actor: an isolate on the VM, a web worker on the web
-/// (compiled from an entrypoint that calls `accumulateWorkerMain`).
+/// (run by the generated entrypoint, which `dart compile js` turns into
+/// `workerScript`).
 ///
 /// Send `Add` on the channel; receive `Total`.
 Future<Actor<Total, Add>> spawnAccumulate({
-  String workerScript = 'accumulate.worker.js',
+  String workerScript = 'workers.worker.js',
 }) {
   registerCounter();
   return spawnActorWorker<Total, Add>(
     reducer: accumulate,
     workerScript: workerScript,
+    workerName: 'accumulate',
     encodeInput: (Add message) => _$AddToMap(message),
     decodeOutput:
         (Map<String, Object?> map) => _$TotalFromMap(_$volleyAsMap(map)),
   );
 }
 
-/// Web worker entrypoint for `accumulate`. Call it from the `main` of the worker
-/// you compile with `dart compile js`.
+/// Web worker entrypoint for `accumulate`. The generated `*.worker.dart` calls it
+/// for you.
 void accumulateWorkerMain() => runActorWorker<Total, Add>(
   reducer: accumulate,
   decodeInput: (Map<String, Object?> map) => _$AddFromMap(_$volleyAsMap(map)),
@@ -117,23 +123,25 @@ void accumulateWorkerMain() => runActorWorker<Total, Add>(
 );
 
 /// Runs `sum` as a coroutine: in an isolate on the VM, in a web worker on
-/// the web (compiled from an entrypoint that calls `sumWorkerMain`).
+/// the web (run by the generated entrypoint, which `dart compile js` turns
+/// into `workerScript`).
 Coroutine<int> launchSum(
   List<int> arg0,
   int arg1, {
-  String workerScript = 'sum.worker.js',
+  String workerScript = 'workers.worker.js',
 }) {
   registerCounter();
   return launchCoroutineWorker<int>(
     compute: () => sum(arg0, arg1),
     workerScript: workerScript,
+    workerName: 'sum',
     args: [arg0.map((v0) => v0).toList(), arg1],
     decodeResult: (Object? value) => (value as int),
   );
 }
 
-/// Web worker entrypoint for `sum`. Call it from the `main` of the worker
-/// you compile with `dart compile js`.
+/// Web worker entrypoint for `sum`. The generated `*.worker.dart` calls it
+/// for you.
 void sumWorkerMain() => runCoroutineWorker<int>(
   run:
       (List<Object?> args) => sum(
@@ -144,19 +152,24 @@ void sumWorkerMain() => runCoroutineWorker<int>(
 );
 
 /// Runs `bump` as a coroutine: in an isolate on the VM, in a web worker on
-/// the web (compiled from an entrypoint that calls `bumpWorkerMain`).
-Coroutine<int> launchBump(int arg0, {String workerScript = 'bump.worker.js'}) {
+/// the web (run by the generated entrypoint, which `dart compile js` turns
+/// into `workerScript`).
+Coroutine<int> launchBump(
+  int arg0, {
+  String workerScript = 'workers.worker.js',
+}) {
   registerCounter();
   return launchCoroutineWorker<int>(
     compute: () => bump(arg0),
     workerScript: workerScript,
+    workerName: 'bump',
     args: [arg0],
     decodeResult: (Object? value) => (value as int),
   );
 }
 
-/// Web worker entrypoint for `bump`. Call it from the `main` of the worker
-/// you compile with `dart compile js`.
+/// Web worker entrypoint for `bump`. The generated `*.worker.dart` calls it
+/// for you.
 void bumpWorkerMain() => runCoroutineWorker<int>(
   run: (List<Object?> args) => bump((args[0] as int)),
   encodeResult: (int value) => value,
