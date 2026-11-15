@@ -12,6 +12,7 @@ isolate **or** a web worker, from a single generated file.
 | `volley` | Base implementation. Isolate-backed `actor()` / `coroutine()` on the VM; in-process on the web. |
 | `volley_workers` | Runtime and annotations. Delegates to `volley` on the VM and to real Web Workers on the web. |
 | `volley_workers_gen` | `build_runner` builder that reads the annotations and writes `foo.gen.dart`. Depends on `volley_workers` only to recognise its annotations by name. |
+| `volley_lints` | Analyzer plugin (no runtime role). Reports the same declaration errors as the builder live in the IDE, plus checks the builder cannot make. Its type rules (`lib/src/semantics.dart`) mirror `Codec`; keep them in sync. See [its README](../packages/volley_lints/README.md). |
 
 ```
 volley_api  <--  volley  <--  volley_workers
@@ -182,6 +183,7 @@ worker                                 page
 | Location | What it covers |
 | --- | --- |
 | `volley_workers_gen/test` | Builder output and validation errors, via `build_test`. |
+| `volley_lints/test` | One test class per rule, via `analyzer_testing`. |
 | `volley_workers/test/vm` | Generated actor and coroutine on isolates. |
 | `volley_workers/test/web` | Generated actor, coroutine and the singleton bridge in Chrome. Needs the worker scripts compiled first (see the test file) and must be run from `packages/volley_workers`: `dart test -p chrome test/web`. |
 

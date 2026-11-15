@@ -1,0 +1,6 @@
+include: ../../analysis_options.yaml
+
+analyzer:
+  errors:
+    # test_reflective_loader discovers tests by their `test_` prefix.
+    non_constant_identifier_names: ignore

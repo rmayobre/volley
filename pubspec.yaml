@@ -9,3 +9,4 @@ workspace:
   - packages/volley
   - packages/volley_workers
   - packages/volley_workers_gen
+  - packages/volley_lints

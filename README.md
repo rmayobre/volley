@@ -15,6 +15,7 @@ both: **actors**, **coroutines** and **singletons**.
 | [`volley_api`](packages/volley_api) | Platform-agnostic interfaces and utilities (`Channel`, `Actor`, `Disposable`, `Pool`, `MessageBus`, ...). Re-exported by `volley`. |
 | [`volley_workers`](packages/volley_workers) | Annotations (`@actor`, `@coroutine`, `@singleton`, `@encodable`) and a runtime that runs the same code as an isolate on the VM or a Web Worker in the browser. |
 | [`volley_workers_gen`](packages/volley_workers_gen) | `build_runner` code generator for `volley_workers`. |
+| [`volley_lints`](packages/volley_lints) | Analyzer plugin that reports invalid `volley_workers` declarations (unsupported message properties, bad `@actor` signatures, ...) while you type. |
 
 How the worker packages fit together: [docs/architecture.md](docs/architecture.md).
 
@@ -80,6 +81,7 @@ This is a Dart workspace. From the repository root:
 dart pub get
 dart analyze packages
 dart test packages/volley_api packages/volley   # VM + Chrome (see below)
+dart test packages/volley_lints                 # analyzer plugin rules
 # volley_workers / volley_workers_gen: see their READMEs and docs/architecture.md
 ```
 
