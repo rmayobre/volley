@@ -11,6 +11,11 @@ containing for each annotated function:
 | `@singleton` | concrete `SerializedSingleton`/`ConcurrentSingleton` subclass with a no-argument constructor and encodable message types | `register<Name>()`, `request<Name>(message)` |
 | `@encodable` | concrete class with an unnamed constructor | `toMap` / `fromMap` codecs |
 
+For each library with `@actor` or `@coroutine` functions it also writes
+`foo.worker.dart`, the web worker entrypoint: a generated `main` that runs the
+worker the page started. Compile it to `foo.worker.js`, the default
+`workerScript`.
+
 Add `volley_workers_gen` and `build_runner` as dev dependencies and run
 `dart run build_runner build`.
 

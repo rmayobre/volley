@@ -9,6 +9,8 @@ import 'package:volley_api/volley_api.dart';
 /// * [reducer]: the annotated `@actor` function.
 /// * [workerScript]: URL of the compiled web worker script. Web only; the VM
 ///   ignores it.
+/// * [workerName]: names the worker so the library's generated entrypoint
+///   (`runWorkerEntrypoint`) can pick what to run. Web only.
 /// * [encodeInput] / [decodeOutput]: convert messages to and from the
 ///   JS-safe wire form. Web only; the VM sends messages as-is.
 ///
@@ -17,6 +19,7 @@ import 'package:volley_api/volley_api.dart';
 Future<Actor<I, O>> spawnActorWorker<I extends Message, O extends Message>({
   required FutureOr<I> Function(O) reducer,
   required String workerScript,
+  String? workerName,
   required Map<String, Object?> Function(O) encodeInput,
   required I Function(Map<String, Object?>) decodeOutput,
 }) => volley.actor<I, O>(reducer);
@@ -26,6 +29,8 @@ Future<Actor<I, O>> spawnActorWorker<I extends Message, O extends Message>({
 /// * [compute]: runs the annotated `@coroutine` function with its arguments.
 ///   Used on the VM, where it runs in a `volley` coroutine isolate.
 /// * [workerScript]: URL of the compiled web worker script. Web only.
+/// * [workerName]: names the worker so the library's generated entrypoint
+///   (`runWorkerEntrypoint`) can pick what to run. Web only.
 /// * [args] / [decodeResult]: the arguments in wire form and the converter
 ///   for the result. Web only.
 ///
@@ -34,6 +39,7 @@ Future<Actor<I, O>> spawnActorWorker<I extends Message, O extends Message>({
 Coroutine<R> launchCoroutineWorker<R>({
   required FutureOr<R> Function() compute,
   required String workerScript,
+  String? workerName,
   required List<Object?> args,
   required R Function(Object?) decodeResult,
 }) => volley.coroutine<R>(compute);
@@ -80,3 +86,11 @@ callSingleton<I extends Message, O extends Message, T extends Singleton<I, O>>({
   required Object? Function(O message) encodeIn,
   required I Function(Object? wire) decodeOut,
 }) => Singleton.request<I, O, T>(build, message);
+
+/// Entry point body for a library's generated `<file>.worker.dart`: runs the
+/// worker whose name matches the one the page gave this `Worker`.
+///
+/// [workers] maps each worker name to its generated `<name>WorkerMain`.
+/// Web only; throws `UnsupportedError` elsewhere.
+void runWorkerEntrypoint(Map<String, void Function()> workers) =>
+    throw UnsupportedError('Worker entrypoints only run in a web worker.');

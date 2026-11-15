@@ -5,3 +5,10 @@ builders:
     build_extensions: {".dart": [".gen.dart"]}
     auto_apply: dependents
     build_to: source
+  worker_entrypoint:
+    import: "package:volley_workers_gen/volley_workers_gen.dart"
+    builder_factories: ["workerEntrypointBuilder"]
+    build_extensions: {".dart": [".worker.dart"]}
+    required_inputs: [".gen.dart"]
+    auto_apply: dependents
+    build_to: source

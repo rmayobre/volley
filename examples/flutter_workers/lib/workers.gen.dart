@@ -68,16 +68,18 @@ Future<RunCount> requestRunLog(RunStarted message) {
 }
 
 /// Starts `analyze` as an actor: an isolate on the VM, a web worker on the web
-/// (compiled from an entrypoint that calls `analyzeWorkerMain`).
+/// (run by the generated entrypoint, which `dart compile js` turns into
+/// `workerScript`).
 ///
 /// Send `AnalyzeRequest` on the channel; receive `AnalyzeReport`.
 Future<Actor<AnalyzeReport, AnalyzeRequest>> spawnAnalyze({
-  String workerScript = 'analyze.worker.js',
+  String workerScript = 'workers.worker.js',
 }) {
   registerRunLog();
   return spawnActorWorker<AnalyzeReport, AnalyzeRequest>(
     reducer: analyze,
     workerScript: workerScript,
+    workerName: 'analyze',
     encodeInput: (AnalyzeRequest message) => _$AnalyzeRequestToMap(message),
     decodeOutput:
         (Map<String, Object?> map) =>
@@ -85,8 +87,8 @@ Future<Actor<AnalyzeReport, AnalyzeRequest>> spawnAnalyze({
   );
 }
 
-/// Web worker entrypoint for `analyze`. Call it from the `main` of the worker
-/// you compile with `dart compile js`.
+/// Web worker entrypoint for `analyze`. The generated `*.worker.dart` calls it
+/// for you.
 void analyzeWorkerMain() => runActorWorker<AnalyzeReport, AnalyzeRequest>(
   reducer: analyze,
   decodeInput:
@@ -95,22 +97,24 @@ void analyzeWorkerMain() => runActorWorker<AnalyzeReport, AnalyzeRequest>(
 );
 
 /// Runs `countPrimes` as a coroutine: in an isolate on the VM, in a web worker on
-/// the web (compiled from an entrypoint that calls `countPrimesWorkerMain`).
+/// the web (run by the generated entrypoint, which `dart compile js` turns
+/// into `workerScript`).
 Coroutine<int> launchCountPrimes(
   int arg0, {
-  String workerScript = 'countPrimes.worker.js',
+  String workerScript = 'workers.worker.js',
 }) {
   registerRunLog();
   return launchCoroutineWorker<int>(
     compute: () => countPrimes(arg0),
     workerScript: workerScript,
+    workerName: 'countPrimes',
     args: [arg0],
     decodeResult: (Object? value) => (value as int),
   );
 }
 
-/// Web worker entrypoint for `countPrimes`. Call it from the `main` of the worker
-/// you compile with `dart compile js`.
+/// Web worker entrypoint for `countPrimes`. The generated `*.worker.dart` calls it
+/// for you.
 void countPrimesWorkerMain() => runCoroutineWorker<int>(
   run: (List<Object?> args) => countPrimes((args[0] as int)),
   encodeResult: (int value) => value,

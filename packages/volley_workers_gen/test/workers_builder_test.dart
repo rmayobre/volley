@@ -76,6 +76,44 @@ void main() {
     expect(generated, contains('void sumWorkerMain()'));
     expect(generated, contains(r'_$PingToMap'));
     expect(generated, contains(r'_$PongFromMap'));
+    expect(generated, contains("workerScript = 'sample.worker.js'"));
+    expect(generated, contains("workerName: 'echo'"));
+    expect(generated, contains("workerName: 'sum'"));
+  });
+
+  test('generates one worker entrypoint per library', () async {
+    final readerWriter = TestReaderWriter(rootPackage: 'volley_workers_gen');
+    await readerWriter.testing.loadIsolateSources();
+    await testBuilder(
+      workerEntrypointBuilder(BuilderOptions.empty),
+      {'volley_workers_gen|lib/sample.dart': _source},
+      readerWriter: readerWriter,
+      outputs: {
+        'volley_workers_gen|lib/sample.worker.dart': decodedMatches(
+          allOf(
+            contains("import 'sample.dart';"),
+            contains('void main() => runWorkerEntrypoint({'),
+            contains("'echo': echoWorkerMain,"),
+            contains("'sum': sumWorkerMain,"),
+          ),
+        ),
+      },
+    );
+  });
+
+  test('skips entrypoints for libraries without workers', () async {
+    final readerWriter = TestReaderWriter(rootPackage: 'volley_workers_gen');
+    await readerWriter.testing.loadIsolateSources();
+    await testBuilder(
+      workerEntrypointBuilder(BuilderOptions.empty),
+      {
+        'volley_workers_gen|lib/plain.dart':
+            "import 'package:volley_workers/volley_workers.dart';\n"
+            '@encodable\nfinal class A implements Message { const A(); }\n',
+      },
+      readerWriter: readerWriter,
+      outputs: {},
+    );
   });
 
   test('supports enums, DateTime, nesting and nullable lists', () async {
