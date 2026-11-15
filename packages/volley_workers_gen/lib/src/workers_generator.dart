@@ -26,12 +26,16 @@ final class WorkersGenerator extends Generator {
   /// each spawn/launch function so workers can reach the page's singletons.
   String _registrations = '';
 
+  /// Default `workerScript`: the compiled entrypoint, `<source file>.worker.js`.
+  String _script = '';
+
   /// Returns the body of `<source>.gen.dart` for [library], or `null` when it
   /// has nothing annotated. Singletons are generated first so the spawn and
   /// launch functions can register them.
   @override
   String? generate(LibraryReader library, BuildStep buildStep) {
     final out = <String>[];
+    _script = '${workerScriptBase(buildStep.inputId)}.worker.js';
 
     for (final annotated in library.annotatedWith(encodableChecker)) {
       out.add(_message(annotated.element));
@@ -257,22 +261,24 @@ Future<$o> request$name($i message) {
     final upper = _capitalize(name);
     return '''
 /// Starts `$name` as an actor: an isolate on the VM, a web worker on the web
-/// (compiled from an entrypoint that calls `${name}WorkerMain`).
+/// (run by the generated entrypoint, which `dart compile js` turns into
+/// `workerScript`).
 ///
 /// Send `$i` on the channel; receive `$o`.
 Future<Actor<$o, $i>> spawn$upper({
-  String workerScript = '$name.worker.js',
+  String workerScript = '$_script',
 }) {
 $_registrations  return spawnActorWorker<$o, $i>(
     reducer: $name,
     workerScript: workerScript,
+    workerName: '$name',
     encodeInput: ($i message) => $encodeInput,
     decodeOutput: (Map<String, Object?> map) => $decodeOutput,
   );
 }
 
-/// Web worker entrypoint for `$name`. Call it from the `main` of the worker
-/// you compile with `dart compile js`.
+/// Web worker entrypoint for `$name`. The generated `*.worker.dart` calls it
+/// for you.
 void ${name}WorkerMain() => runActorWorker<$o, $i>(
   reducer: $name,
   decodeInput: (Map<String, Object?> map) => $decodeInput,
@@ -317,21 +323,23 @@ void ${name}WorkerMain() => runActorWorker<$o, $i>(
     }
     final r = result.getDisplayString();
     final upper = _capitalize(name);
-    final params = [...signature, "{String workerScript = '$name.worker.js'}"];
+    final params = [...signature, "{String workerScript = '$_script'}"];
     return '''
 /// Runs `$name` as a coroutine: in an isolate on the VM, in a web worker on
-/// the web (compiled from an entrypoint that calls `${name}WorkerMain`).
+/// the web (run by the generated entrypoint, which `dart compile js` turns
+/// into `workerScript`).
 Coroutine<$r> launch$upper(${params.join(', ')}) {
 $_registrations  return launchCoroutineWorker<$r>(
     compute: () => $name(${callArgs.join(', ')}),
     workerScript: workerScript,
+    workerName: '$name',
     args: [${encodedArgs.join(', ')}],
     decodeResult: (Object? value) => $decodeResult,
   );
 }
 
-/// Web worker entrypoint for `$name`. Call it from the `main` of the worker
-/// you compile with `dart compile js`.
+/// Web worker entrypoint for `$name`. The generated `*.worker.dart` calls it
+/// for you.
 void ${name}WorkerMain() => runCoroutineWorker<$r>(
   run: (List<Object?> args) => $name(${decodedArgs.join(', ')}),
   encodeResult: ($r value) => $encodeResult,
@@ -372,3 +380,18 @@ void ${name}WorkerMain() => runCoroutineWorker<$r>(
   String _capitalize(String value) =>
       value.isEmpty ? value : value[0].toUpperCase() + value.substring(1);
 }
+
+/// `foo` for `lib/foo.dart`: names `foo.gen.dart`'s sibling `foo.worker.*`.
+String workerScriptBase(AssetId input) {
+  final file = input.pathSegments.last;
+  return file.substring(0, file.length - '.dart'.length);
+}
+
+/// Names of the `@actor` / `@coroutine` functions of [library], in source
+/// order, or empty if it has none.
+List<String> workerNames(LibraryReader library) => [
+  for (final annotated in library.annotatedWith(_actorChecker))
+    annotated.element.name!,
+  for (final annotated in library.annotatedWith(_coroutineChecker))
+    annotated.element.name!,
+];

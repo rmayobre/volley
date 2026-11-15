@@ -35,18 +35,14 @@ Future<int> sum(List<int> values) async => values.fold<int>(0, (a, b) => a + b);
 
 ## Web workers
 
-Each worker needs its own entrypoint that calls the generated `*WorkerMain`:
-
-```dart
-// echo_worker.dart
-import 'workers.dart';
-void main() => echoWorkerMain();
-```
-
-Compile it and pass its URL as `workerScript` (default `echo.worker.js`):
+The generator also writes the web worker entrypoint, `workers.worker.dart`
+next to `workers.dart`. Its generated `main` runs whichever of the library's
+workers the page started, so one script serves them all. Compile it and serve
+the result at the default `workerScript` (`workers.worker.js`, named after the
+source file):
 
 ```
-dart compile js -o echo.worker.js echo_worker.dart
+dart compile js -o workers.worker.js workers.worker.dart
 ```
 
 Actor messages and coroutine arguments/results cross the worker boundary as

@@ -29,7 +29,7 @@ foo.dart  (@actor / @coroutine / @encodable, `part 'foo.gen.dart';`)
    v
 foo.gen.dart  (`part of 'foo.dart'`)
    per @encodable class: _$NameToMap / _$NameFromMap
-   per @actor fn:            spawn<Fn>()   + <fn>WorkerMain()
+   per @actor fn:            spawn<Fn>()   + <fn>WorkerMain()   (+ <file>.worker.dart)
    per @coroutine fn:        launch<Fn>()  + <fn>WorkerMain()
 ```
 
@@ -89,7 +89,9 @@ lib/src/worker_runtime.dart
 ### Web (`src/web`)
 
 Each actor or coroutine owns one `web.Worker` running a script compiled from a
-tiny entrypoint that calls the generated `<fn>WorkerMain()`.
+generated entrypoint. Its `main` calls `runWorkerEntrypoint`, which runs the
+`<fn>WorkerMain()` matching the `Worker`'s name (set by `spawn<Fn>` /
+`launch<Fn>`).
 
 ```
 host                                   worker
@@ -117,19 +119,24 @@ to null, bool, num, String, List, Map or typed data.
 
 ### Compiling workers
 
+A second builder writes `workers.worker.dart` for each library with `@actor` or
+`@coroutine` functions. A builder must declare its outputs up front, so it
+cannot write one entrypoint per function; instead the one `main` dispatches on
+the worker's name.
+
 ```dart
-// echo_worker.dart
-import 'workers.dart';
-void main() => echoWorkerMain();
+// workers.worker.dart (generated)
+void main() => runWorkerEntrypoint({
+  'echo': echoWorkerMain,
+  'sum': sumWorkerMain,
+});
 ```
 
 ```
-dart compile js -o echo.worker.js echo_worker.dart
+dart compile js -o workers.worker.js workers.worker.dart
 ```
 
-Pass the URL as `workerScript` (default `<fn>.worker.js`). The builder cannot
-emit these entrypoints itself because a builder must declare its outputs up
-front and only produces one `.gen.dart` per source file.
+Pass the URL as `workerScript` (default `<source file>.worker.js`).
 
 ## Singletons
 

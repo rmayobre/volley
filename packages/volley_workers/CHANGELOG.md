@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `runWorkerEntrypoint` for the generated `<file>.worker.dart`, and an optional
+  `workerName` on `spawnActorWorker` / `launchCoroutineWorker` that names the
+  web `Worker` so the entrypoint can pick what to run.
+
 ## 0.1.0
 
 - Annotations `@actor`, `@coroutine`, `@encodable` and `@singleton`, read by

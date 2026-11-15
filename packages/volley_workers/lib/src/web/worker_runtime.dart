@@ -145,11 +145,19 @@ final class _WebWorkerActor<I extends Message, O extends Message>
   Future<void> dispose() => _close(null);
 }
 
+/// Starts the script at [script] as a worker named [name], if given.
+web.Worker _newWorker(String script, String? name) => web.Worker(
+  script.toJS,
+  web.WorkerOptions(name: name ?? ''),
+);
+
 /// Starts an actor for the generated `spawn<Name>` function.
 ///
 /// * [reducer]: the annotated `@actor` function.
 /// * [workerScript]: URL of the compiled web worker script. Web only; the VM
 ///   ignores it.
+/// * [workerName]: names the worker so the library's generated entrypoint
+///   (`runWorkerEntrypoint`) can pick what to run. Web only.
 /// * [encodeInput] / [decodeOutput]: convert messages to and from the
 ///   JS-safe wire form. Web only; the VM sends messages as-is.
 ///
@@ -158,10 +166,11 @@ final class _WebWorkerActor<I extends Message, O extends Message>
 Future<Actor<I, O>> spawnActorWorker<I extends Message, O extends Message>({
   required FutureOr<I> Function(O) reducer,
   required String workerScript,
+  String? workerName,
   required Map<String, Object?> Function(O) encodeInput,
   required I Function(Map<String, Object?>) decodeOutput,
 }) async {
-  final worker = web.Worker(workerScript.toJS);
+  final worker = _newWorker(workerScript, workerName);
   final ready = Completer<void>();
   worker.onmessage =
       ((web.MessageEvent event) {
@@ -261,6 +270,8 @@ final class _WebWorkerCoroutine<R> implements Coroutine<R> {
 /// * [compute]: runs the annotated `@coroutine` function with its arguments.
 ///   Used on the VM, where it runs in a `volley` coroutine isolate.
 /// * [workerScript]: URL of the compiled web worker script. Web only.
+/// * [workerName]: names the worker so the library's generated entrypoint
+///   (`runWorkerEntrypoint`) can pick what to run. Web only.
 /// * [args] / [decodeResult]: the arguments in wire form and the converter
 ///   for the result. Web only.
 ///
@@ -269,9 +280,14 @@ final class _WebWorkerCoroutine<R> implements Coroutine<R> {
 Coroutine<R> launchCoroutineWorker<R>({
   required FutureOr<R> Function() compute,
   required String workerScript,
+  String? workerName,
   required List<Object?> args,
   required R Function(Object?) decodeResult,
-}) => _WebWorkerCoroutine<R>(web.Worker(workerScript.toJS), args, decodeResult);
+}) => _WebWorkerCoroutine<R>(
+  _newWorker(workerScript, workerName),
+  args,
+  decodeResult,
+);
 
 final _pendingSingletonCalls = <int, Completer<Object?>>{};
 var _nextSingletonCall = 0;
@@ -388,4 +404,21 @@ void runCoroutineWorker<R>({
         }();
       }).toJS;
   _scope.postMessage(_pack({'t': 'ready'}));
+}
+
+/// Entry point body for a library's generated `<file>.worker.dart`: runs the
+/// worker whose name matches the one the page gave this `Worker`.
+///
+/// [workers] maps each worker name to its generated `<name>WorkerMain`.
+/// Web only; throws `UnsupportedError` elsewhere.
+void runWorkerEntrypoint(Map<String, void Function()> workers) {
+  final name = _scope.name;
+  final main = workers[name];
+  if (main == null) {
+    throw StateError(
+      'No worker named "$name" in this script. It provides: '
+      '${workers.keys.join(', ')}.',
+    );
+  }
+  main();
 }
